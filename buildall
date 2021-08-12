@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# Install package
+if [[ $1 == '--prod' ]]; 
+    then
+        printf '\n-->> Building Atom reportlib (production)\n\n'
+        pip install .
+    else
+        printf '\n-->> Building Atom reportlib (development)\n\n'
+        pip install -e .
+fi
+
+printf '\n-->> Generating documentation\n\n'
+
+# Clean before re-generating doc
+rm -r ./documentation
+find sphinx/source -type f -name "*.rst" ! -name "index.rst" -delete
+
+# Build doc
+sphinx-apidoc -f -o sphinx/source reportlib
+sphinx-build -b html sphinx/source/ sphinx/build/html -a -E
+
+cp -R sphinx/build/html documentation
