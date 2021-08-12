@@ -39,22 +39,86 @@
 <section id="module-reportlib.data">
 <span id="reportlib-data-module"></span><h2>reportlib.data module<a class="headerlink" href="#module-reportlib.data" title="Permalink to this headline">¶</a></h2>
 <dl class="py class">
-<dt class="sig sig-object py" id="reportlib.data.DbConnection">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">reportlib.data.</span></span><span class="sig-name descname"><span class="pre">DbConnection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">secret_yaml_path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#reportlib.data.DbConnection" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="reportlib.data.Data">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">reportlib.data.</span></span><span class="sig-name descname"><span class="pre">Data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">secret_yaml_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">campaign_id</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#reportlib.data.Data" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>Creates and maintains a connection to the Atom RDS database to run queries</p>
+<p>Loads and hosts common ATOM data like aois, dashboard data (dash), impressions (mop), etc.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>secret_yaml_path</strong> – This is the first param.</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>secret_yaml_path</strong> (<em>str</em>) – Relative path of the secret.yaml file</p></li>
+<li><p><strong>campaign_id</strong> (<em>str</em>) – Currently supports NTXX and OTXX schemes</p></li>
+</ul>
 </dd>
 <dt class="field-even">Returns</dt>
 <dd class="field-even"><p>A pandas DataFrame with the query result</p>
 </dd>
 </dl>
 <dl class="py method">
-<dt class="sig sig-object py" id="reportlib.data.DbConnection.query">
-<span class="sig-name descname"><span class="pre">query</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#reportlib.data.DbConnection.query" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="reportlib.data.Data.extract_aoi">
+<span class="sig-name descname"><span class="pre">extract_aoi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">string</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#reportlib.data.Data.extract_aoi" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="reportlib.data.Data.extract_message">
+<em class="property"><span class="pre">static</span> </em><span class="sig-name descname"><span class="pre">extract_message</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">string</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#reportlib.data.Data.extract_message" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="reportlib.data.Data.load_all">
+<span class="sig-name descname"><span class="pre">load_all</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#reportlib.data.Data.load_all" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="reportlib.data.Data.load_aois">
+<span class="sig-name descname"><span class="pre">load_aois</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#reportlib.data.Data.load_aois" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="reportlib.data.Data.load_dash">
+<span class="sig-name descname"><span class="pre">load_dash</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#reportlib.data.Data.load_dash" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="reportlib.data.Data.load_lifesight">
+<span class="sig-name descname"><span class="pre">load_lifesight</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#reportlib.data.Data.load_lifesight" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="reportlib.data.Data.load_mop">
+<span class="sig-name descname"><span class="pre">load_mop</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#reportlib.data.Data.load_mop" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="reportlib.data.Data.load_survey">
+<span class="sig-name descname"><span class="pre">load_survey</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#reportlib.data.Data.load_survey" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="reportlib.data.DbConnection">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">reportlib.data.</span></span><span class="sig-name descname"><span class="pre">DbConnection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">secret_yaml_path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#reportlib.data.DbConnection" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Creates and maintains a connection to the Atom RDS database to run queries</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>secret_yaml_path</strong> (<em>str</em>) – Relative path of the secret.yaml file TODO: add template in doc/readme</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="reportlib.data.DbConnection.query">
+<span class="sig-name descname"><span class="pre">query</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">querystring</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#reportlib.data.DbConnection.query" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run query on the Atom RDS</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>querystring</strong> (<em>str</em>) – A Postgresql query string</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A pandas DataFrame with the query result</p>
+</dd>
+</dl>
+</dd></dl>
 
 </dd></dl>
 
