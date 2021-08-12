@@ -41,6 +41,7 @@ instance/
 
 # Sphinx documentation
 sphinx/build/
+documentation/.doctrees/
 
 # Jupyter Notebook
 .ipynb_checkpoints
