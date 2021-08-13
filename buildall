@@ -12,12 +12,5 @@ fi
 
 printf '\n-->> Generating documentation\n\n'
 
-# Clean before re-generating doc
-rm -r ./documentation
-find sphinx/source -type f -name "*.rst" ! -name "index.rst" -delete
-
 # Build doc
-sphinx-apidoc -f -o sphinx/source reportlib
-sphinx-build -b html sphinx/source/ sphinx/build/html -a -E
-
-cp -R sphinx/build/html documentation
+ pdoc --html reportlib

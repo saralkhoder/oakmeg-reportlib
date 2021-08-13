@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.10.0" />
+<title>reportlib.maps API documentation</title>
+<meta name="description" content="" />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>reportlib.maps</code></h1>
+</header>
+<section id="section-intro">
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">import io
+from enum import Enum
+from pathlib import Path
+from PIL import Image
+import folium
+from folium import plugins
+
+
+class Tile(Enum):
+    TERRAIN = &#34;Stamen Terrain&#34;
+    STREETS = &#34;https://api.mapbox.com/styles/v1/gaspardfeuvray/ckpofztgc08ys17mlpwabqxhz/tiles/256/{z}/{x}/{y}@2x?\
+access_token=pk.eyJ1IjoiZ2FzcGFyZGZldXZyYXkiLCJhIjoiY2p2YzdhMHZzMWZyMzN5bWo3dTUwY2UxcSJ9.MwgCkS-8xqvM9wjQI-vjgw&#34;
+    MONOCHROME = &#34;https://api.mapbox.com/styles/v1/gaspardfeuvray/ckrap3uup0c9717o09tntz4or/tiles/256/{z}/{x}/{y}@2x?\
+access_token=pk.eyJ1IjoiZ2FzcGFyZGZldXZyYXkiLCJhIjoiY2p2YzdhMHZzMWZyMzN5bWo3dTUwY2UxcSJ9.MwgCkS-8xqvM9wjQI-vjgw&#34;
+
+
+class Cmap(Enum):
+    QUALITATIVE = [
+        &#34;#1f77b4&#34;,
+        &#34;#2ca02c&#34;,
+        &#34;#ff7f0e&#34;,
+        &#34;#d62728&#34;,
+        &#34;#9467bd&#34;,
+        &#34;#8c564b&#34;,
+        &#34;#e377c2&#34;,
+    ]
+
+
+class Palette(Enum):
+    AOI = &#34;blue&#34;
+
+
+class AtomMap(folium.Map):
+    def __init__(self, tile):
+        self.fmap = create_map(tile)
+        self.layers = []
+        self.bounds = {&#34;sw&#34;: [], &#34;ne&#34;: []}
+
+        # Init map
+        self.fmap.add_child(folium.LayerControl())
+        self.fmap.add_child(folium.plugins.MeasureControl(primary_length_unit=&#34;meters&#34;))
+
+    # Update SW/NE bounds to include new geodata
+    def _update_bounds(self, lat, lon):
+        def update_bound(prop, func):
+            if self.bounds[prop]:
+                self.bounds[prop] = [
+                    func(self.bounds[prop][0], func(list(lat))),
+                    func(self.bounds[prop][1], func(list(lon))),
+                ]
+            else:
+                self.bounds[prop] = [func(list(lat)), func(list(lon))]
+
+        update_bound(&#34;sw&#34;, min)
+        update_bound(&#34;ne&#34;, max)
+
+    def add_aois(self, aois):
+        for index, aoi in aois.iterrows():
+            popup = folium.Popup(
+                html=f&#34;&lt;b&gt;{aoi[&#39;name&#39;]}&lt;/b&gt;&lt;/br&gt;&#34;,
+                show=False,
+                sticky=True,
+                max_width=500,
+            )
+            folium.Circle(
+                [aoi[&#34;latitude&#34;], aoi[&#34;longitude&#34;]],
+                radius=aoi[&#34;radius_km&#34;] * 1000,
+                popup=popup,
+                fill_color=Palette.AOI.value,
+                color=Palette.AOI.value,
+                opacity=0.3,
+            ).add_to(self.fmap)
+
+        self._update_bounds(aois[&#34;latitude&#34;], aois[&#34;longitude&#34;])
+        return self  # for serialisation
+
+    def show(self):
+        print(&#34;todo: compute bounds and feature groups&#34;)
+        print(self.bounds)
+        self.fmap.fit_bounds([self.bounds[&#34;sw&#34;], self.bounds[&#34;ne&#34;]])
+        return self.fmap
+
+
+def create_map(tile):
+    return folium.Map(tiles=None).add_child(
+        folium.TileLayer(tile.value, name=&#34;base_map&#34;, attr=&#34;atom&#34;)
+    )
+
+
+def save_map(fmap, to):
+    Path(&#34;generated&#34;).mkdir(parents=True, exist_ok=True)
+    img_data = fmap._to_png(5)
+    img = Image.open(io.BytesIO(img_data))
+    img.save(&#34;generated/&#34; + to + &#34;.png&#34;)</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-functions">Functions</h2>
+<dl>
+<dt id="reportlib.maps.create_map"><code class="name flex">
+<span>def <span class="ident">create_map</span></span>(<span>tile)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def create_map(tile):
+    return folium.Map(tiles=None).add_child(
+        folium.TileLayer(tile.value, name=&#34;base_map&#34;, attr=&#34;atom&#34;)
+    )</code></pre>
+</details>
+</dd>
+<dt id="reportlib.maps.save_map"><code class="name flex">
+<span>def <span class="ident">save_map</span></span>(<span>fmap, to)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def save_map(fmap, to):
+    Path(&#34;generated&#34;).mkdir(parents=True, exist_ok=True)
+    img_data = fmap._to_png(5)
+    img = Image.open(io.BytesIO(img_data))
+    img.save(&#34;generated/&#34; + to + &#34;.png&#34;)</code></pre>
+</details>
+</dd>
+</dl>
+</section>
+<section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="reportlib.maps.AtomMap"><code class="flex name class">
+<span>class <span class="ident">AtomMap</span></span>
+<span>(</span><span>tile)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Create a Map with Folium and Leaflet.js</p>
+<p>Generate a base map of given width and height with either default
+tilesets or a custom tileset URL. The following tilesets are built-in
+to Folium. Pass any of the following to the "tiles" keyword:</p>
+<pre><code>- "OpenStreetMap"
+- "Mapbox Bright" (Limited levels of zoom for free tiles)
+- "Mapbox Control Room" (Limited levels of zoom for free tiles)
+- "Stamen" (Terrain, Toner, and Watercolor)
+- "Cloudmade" (Must pass API key)
+- "Mapbox" (Must pass API key)
+- "CartoDB" (positron and dark_matter)
+</code></pre>
+<p>You can pass a custom tileset to Folium by passing a Leaflet-style
+URL to the tiles parameter: <code>http://{s}.yourtiles.com/{z}/{x}/{y}.png</code>.</p>
+<p>You can find a list of free tile providers here:
+<code>http://leaflet-extras.github.io/leaflet-providers/preview/</code>.
+Be sure to check their terms and conditions and to provide attribution
+with the <code>attr</code> keyword.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>location</code></strong> :&ensp;<code>tuple</code> or <code>list</code>, default <code>None</code></dt>
+<dd>Latitude and Longitude of Map (Northing, Easting).</dd>
+<dt><strong><code>width</code></strong> :&ensp;<code>pixel int</code> or <code>percentage string (default: '100%')</code></dt>
+<dd>Width of the map.</dd>
+<dt><strong><code>height</code></strong> :&ensp;<code>pixel int</code> or <code>percentage string (default: '100%')</code></dt>
+<dd>Height of the map.</dd>
+<dt><strong><code>tiles</code></strong> :&ensp;<code>str</code>, default <code>'OpenStreetMap'</code></dt>
+<dd>Map tileset to use. Can choose from a list of built-in tiles,
+pass a custom URL or pass <code>None</code> to create a map without tiles.
+For more advanced tile layer options, use the <code>TileLayer</code> class.</dd>
+<dt><strong><code>min_zoom</code></strong> :&ensp;<code>int</code>, default <code>0</code></dt>
+<dd>Minimum allowed zoom level for the tile layer that is created.</dd>
+<dt><strong><code>max_zoom</code></strong> :&ensp;<code>int</code>, default <code>18</code></dt>
+<dd>Maximum allowed zoom level for the tile layer that is created.</dd>
+<dt><strong><code>zoom_start</code></strong> :&ensp;<code>int</code>, default <code>10</code></dt>
+<dd>Initial zoom level for the map.</dd>
+<dt><strong><code>attr</code></strong> :&ensp;<code>string</code>, default <code>None</code></dt>
+<dd>Map tile attribution; only required if passing custom tile URL.</dd>
+<dt><strong><code>crs</code></strong> :&ensp;<code>str</code>, default <code>'EPSG3857'</code></dt>
+<dd>Defines coordinate reference systems for projecting geographical points
+into pixel (screen) coordinates and back.
+You can use Leaflet's values :
+* EPSG3857 : The most common CRS for online maps, used by almost all
+free and commercial tile providers. Uses Spherical Mercator projection.
+Set in by default in Map's crs option.
+* EPSG4326 : A common CRS among GIS enthusiasts.
+Uses simple Equirectangular projection.
+* EPSG3395 : Rarely used by some commercial tile providers.
+Uses Elliptical Mercator projection.
+* Simple : A simple CRS that maps longitude and latitude into
+x and y directly. May be used for maps of flat surfaces
+(e.g. game maps). Note that the y axis should still be inverted
+(going from bottom to top).</dd>
+<dt><strong><code>control_scale</code></strong> :&ensp;<code>bool</code>, default <code>False</code></dt>
+<dd>Whether to add a control scale on the map.</dd>
+<dt><strong><code>prefer_canvas</code></strong> :&ensp;<code>bool</code>, default <code>False</code></dt>
+<dd>Forces Leaflet to use the Canvas back-end (if available) for
+vector layers instead of SVG. This can increase performance
+considerably in some cases (e.g. many thousands of circle
+markers on the map).</dd>
+<dt><strong><code>no_touch</code></strong> :&ensp;<code>bool</code>, default <code>False</code></dt>
+<dd>Forces Leaflet to not use touch events even if it detects them.</dd>
+<dt><strong><code>disable_3d</code></strong> :&ensp;<code>bool</code>, default <code>False</code></dt>
+<dd>Forces Leaflet to not use hardware-accelerated CSS 3D
+transforms for positioning (which may cause glitches in some
+rare environments) even if they're supported.</dd>
+<dt><strong><code>zoom_control</code></strong> :&ensp;<code>bool</code>, default <code>True</code></dt>
+<dd>Display zoom controls on the map.</dd>
+<dt><strong><code>**kwargs</code></strong></dt>
+<dd>Additional keyword arguments are passed to Leaflets Map class:
+<a href="https://leafletjs.com/reference-1.6.0.html#map">https://leafletjs.com/reference-1.6.0.html#map</a></dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>Folium Map Object</code></dt>
+<dd>&nbsp;</dd>
+</dl>
+<h2 id="examples">Examples</h2>
+<pre><code class="language-python-repl">&gt;&gt;&gt; m = folium.Map(location=[45.523, -122.675], width=750, height=500)
+&gt;&gt;&gt; m = folium.Map(location=[45.523, -122.675], tiles='cartodb positron')
+&gt;&gt;&gt; m = folium.Map(
+...    location=[45.523, -122.675],
+...    zoom_start=2,
+...    tiles='https://api.mapbox.com/v4/mapbox.streets/{z}/{x}/{y}.png?access_token=mytoken',
+...    attr='Mapbox attribution'
+...)
+</code></pre></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class AtomMap(folium.Map):
+    def __init__(self, tile):
+        self.fmap = create_map(tile)
+        self.layers = []
+        self.bounds = {&#34;sw&#34;: [], &#34;ne&#34;: []}
+
+        # Init map
+        self.fmap.add_child(folium.LayerControl())
+        self.fmap.add_child(folium.plugins.MeasureControl(primary_length_unit=&#34;meters&#34;))
+
+    # Update SW/NE bounds to include new geodata
+    def _update_bounds(self, lat, lon):
+        def update_bound(prop, func):
+            if self.bounds[prop]:
+                self.bounds[prop] = [
+                    func(self.bounds[prop][0], func(list(lat))),
+                    func(self.bounds[prop][1], func(list(lon))),
+                ]
+            else:
+                self.bounds[prop] = [func(list(lat)), func(list(lon))]
+
+        update_bound(&#34;sw&#34;, min)
+        update_bound(&#34;ne&#34;, max)
+
+    def add_aois(self, aois):
+        for index, aoi in aois.iterrows():
+            popup = folium.Popup(
+                html=f&#34;&lt;b&gt;{aoi[&#39;name&#39;]}&lt;/b&gt;&lt;/br&gt;&#34;,
+                show=False,
+                sticky=True,
+                max_width=500,
+            )
+            folium.Circle(
+                [aoi[&#34;latitude&#34;], aoi[&#34;longitude&#34;]],
+                radius=aoi[&#34;radius_km&#34;] * 1000,
+                popup=popup,
+                fill_color=Palette.AOI.value,
+                color=Palette.AOI.value,
+                opacity=0.3,
+            ).add_to(self.fmap)
+
+        self._update_bounds(aois[&#34;latitude&#34;], aois[&#34;longitude&#34;])
+        return self  # for serialisation
+
+    def show(self):
+        print(&#34;todo: compute bounds and feature groups&#34;)
+        print(self.bounds)
+        self.fmap.fit_bounds([self.bounds[&#34;sw&#34;], self.bounds[&#34;ne&#34;]])
+        return self.fmap</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li>folium.folium.Map</li>
+<li>folium.elements.JSCSSMixin</li>
+<li>branca.element.MacroElement</li>
+<li>branca.element.Element</li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="reportlib.maps.AtomMap.add_aois"><code class="name flex">
+<span>def <span class="ident">add_aois</span></span>(<span>self, aois)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def add_aois(self, aois):
+    for index, aoi in aois.iterrows():
+        popup = folium.Popup(
+            html=f&#34;&lt;b&gt;{aoi[&#39;name&#39;]}&lt;/b&gt;&lt;/br&gt;&#34;,
+            show=False,
+            sticky=True,
+            max_width=500,
+        )
+        folium.Circle(
+            [aoi[&#34;latitude&#34;], aoi[&#34;longitude&#34;]],
+            radius=aoi[&#34;radius_km&#34;] * 1000,
+            popup=popup,
+            fill_color=Palette.AOI.value,
+            color=Palette.AOI.value,
+            opacity=0.3,
+        ).add_to(self.fmap)
+
+    self._update_bounds(aois[&#34;latitude&#34;], aois[&#34;longitude&#34;])
+    return self  # for serialisation</code></pre>
+</details>
+</dd>
+<dt id="reportlib.maps.AtomMap.show"><code class="name flex">
+<span>def <span class="ident">show</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def show(self):
+    print(&#34;todo: compute bounds and feature groups&#34;)
+    print(self.bounds)
+    self.fmap.fit_bounds([self.bounds[&#34;sw&#34;], self.bounds[&#34;ne&#34;]])
+    return self.fmap</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+<dt id="reportlib.maps.Cmap"><code class="flex name class">
+<span>class <span class="ident">Cmap</span></span>
+<span>(</span><span>value, names=None, *, module=None, qualname=None, type=None, start=1)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>An enumeration.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class Cmap(Enum):
+    QUALITATIVE = [
+        &#34;#1f77b4&#34;,
+        &#34;#2ca02c&#34;,
+        &#34;#ff7f0e&#34;,
+        &#34;#d62728&#34;,
+        &#34;#9467bd&#34;,
+        &#34;#8c564b&#34;,
+        &#34;#e377c2&#34;,
+    ]</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li>enum.Enum</li>
+</ul>
+<h3>Class variables</h3>
+<dl>
+<dt id="reportlib.maps.Cmap.QUALITATIVE"><code class="name">var <span class="ident">QUALITATIVE</span></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+</dl>
+</dd>
+<dt id="reportlib.maps.Palette"><code class="flex name class">
+<span>class <span class="ident">Palette</span></span>
+<span>(</span><span>value, names=None, *, module=None, qualname=None, type=None, start=1)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>An enumeration.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class Palette(Enum):
+    AOI = &#34;blue&#34;</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li>enum.Enum</li>
+</ul>
+<h3>Class variables</h3>
+<dl>
+<dt id="reportlib.maps.Palette.AOI"><code class="name">var <span class="ident">AOI</span></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+</dl>
+</dd>
+<dt id="reportlib.maps.Tile"><code class="flex name class">
+<span>class <span class="ident">Tile</span></span>
+<span>(</span><span>value, names=None, *, module=None, qualname=None, type=None, start=1)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>An enumeration.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class Tile(Enum):
+    TERRAIN = &#34;Stamen Terrain&#34;
+    STREETS = &#34;https://api.mapbox.com/styles/v1/gaspardfeuvray/ckpofztgc08ys17mlpwabqxhz/tiles/256/{z}/{x}/{y}@2x?\
+access_token=pk.eyJ1IjoiZ2FzcGFyZGZldXZyYXkiLCJhIjoiY2p2YzdhMHZzMWZyMzN5bWo3dTUwY2UxcSJ9.MwgCkS-8xqvM9wjQI-vjgw&#34;
+    MONOCHROME = &#34;https://api.mapbox.com/styles/v1/gaspardfeuvray/ckrap3uup0c9717o09tntz4or/tiles/256/{z}/{x}/{y}@2x?\
+access_token=pk.eyJ1IjoiZ2FzcGFyZGZldXZyYXkiLCJhIjoiY2p2YzdhMHZzMWZyMzN5bWo3dTUwY2UxcSJ9.MwgCkS-8xqvM9wjQI-vjgw&#34;</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li>enum.Enum</li>
+</ul>
+<h3>Class variables</h3>
+<dl>
+<dt id="reportlib.maps.Tile.MONOCHROME"><code class="name">var <span class="ident">MONOCHROME</span></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="reportlib.maps.Tile.STREETS"><code class="name">var <span class="ident">STREETS</span></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="reportlib.maps.Tile.TERRAIN"><code class="name">var <span class="ident">TERRAIN</span></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+</dl>
+</dd>
+</dl>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="reportlib" href="index.html">reportlib</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="">
+<li><code><a title="reportlib.maps.create_map" href="#reportlib.maps.create_map">create_map</a></code></li>
+<li><code><a title="reportlib.maps.save_map" href="#reportlib.maps.save_map">save_map</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="reportlib.maps.AtomMap" href="#reportlib.maps.AtomMap">AtomMap</a></code></h4>
+<ul class="">
+<li><code><a title="reportlib.maps.AtomMap.add_aois" href="#reportlib.maps.AtomMap.add_aois">add_aois</a></code></li>
+<li><code><a title="reportlib.maps.AtomMap.show" href="#reportlib.maps.AtomMap.show">show</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="reportlib.maps.Cmap" href="#reportlib.maps.Cmap">Cmap</a></code></h4>
+<ul class="">
+<li><code><a title="reportlib.maps.Cmap.QUALITATIVE" href="#reportlib.maps.Cmap.QUALITATIVE">QUALITATIVE</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="reportlib.maps.Palette" href="#reportlib.maps.Palette">Palette</a></code></h4>
+<ul class="">
+<li><code><a title="reportlib.maps.Palette.AOI" href="#reportlib.maps.Palette.AOI">AOI</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="reportlib.maps.Tile" href="#reportlib.maps.Tile">Tile</a></code></h4>
+<ul class="">
+<li><code><a title="reportlib.maps.Tile.MONOCHROME" href="#reportlib.maps.Tile.MONOCHROME">MONOCHROME</a></code></li>
+<li><code><a title="reportlib.maps.Tile.STREETS" href="#reportlib.maps.Tile.STREETS">STREETS</a></code></li>
+<li><code><a title="reportlib.maps.Tile.TERRAIN" href="#reportlib.maps.Tile.TERRAIN">TERRAIN</a></code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+</footer>
+</body>
+</html>

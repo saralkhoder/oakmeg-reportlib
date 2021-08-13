@@ -1,0 +1,1036 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.10.0" />
+<title>reportlib.datamodule API documentation</title>
+<meta name="description" content="" />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>reportlib.datamodule</code></h1>
+</header>
+<section id="section-intro">
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">import io
+import re
+import yaml
+import urllib.parse
+import pandas as pd
+import sqlalchemy as sa
+
+
+class DbConnection:
+    &#34;&#34;&#34;
+    Creates and maintains a connection to the Atom RDS database to run queries
+
+    Args:
+        secret_yaml_path (str): Relative path of the secret.yaml file TODO: add template in doc/readme
+    &#34;&#34;&#34;
+
+    def __init__(self, secret_yaml_path):
+        with open(secret_yaml_path) as file:
+            secrets = yaml.load(file, Loader=yaml.FullLoader)
+            dbuser = secrets[&#34;rds&#34;][&#34;dbuser&#34;]
+            # NB: in secrets.yaml, special characters such as those that may be used in the password need to be URL
+            # encoded to be parsed correctly, like @ must become %40
+            dbpassword = urllib.parse.quote_plus(secrets[&#34;rds&#34;][&#34;dbpassword&#34;])
+            dbhost = secrets[&#34;rds&#34;][&#34;dbhost&#34;]
+            dbport = secrets[&#34;rds&#34;][&#34;dbport&#34;]
+
+            url = f&#34;postgresql://{dbuser}:{dbpassword}@{dbhost}:{str(dbport)}/postgres&#34;
+
+            db_engine = sa.create_engine(url)
+            self.db_engine = db_engine
+            print(&#34;Connected to database&#34;)
+
+    def query(self, querystring):
+        &#34;&#34;&#34;
+        Run query on the Atom RDS
+
+        Args:
+            querystring (str): A Postgresql query string
+
+        Returns:
+            A pandas DataFrame with the query result
+        &#34;&#34;&#34;
+        copy_sql = &#34;COPY ({query}) TO STDOUT WITH CSV {head}&#34;.format(
+            query=querystring, head=&#34;HEADER&#34;
+        )
+        cur = self.db_engine.raw_connection().cursor()
+        store = io.StringIO()
+        cur.copy_expert(copy_sql, store)
+        store.seek(0)
+        return pd.read_csv(store, low_memory=False)
+
+
+class Data:
+    &#34;&#34;&#34;
+    Loads and hosts common ATOM data like aois, dashboard data (dash), impressions (mop), etc.
+
+    Args:
+        secret_yaml_path (str): Relative path of the secret.yaml file
+        campaign_id (str): Currently supports NTXX and OTXX schemes
+
+    Returns:
+        A pandas DataFrame with the query result
+    &#34;&#34;&#34;
+
+    def __init__(self, secret_yaml_path, campaign_id):
+        if &#34;NT&#34; in campaign_id:
+            self.project_id = &#34;Nutmeg - PRO-12767&#34;
+        elif &#34;OT&#34; in campaign_id:
+            self.project_id = &#34;Oak - PRO-12766&#34;
+        else:
+            raise AssertionError(&#34;Unrecognized campaign ID, should be NTXX or OTXX&#34;)
+        self.campaign_id = campaign_id
+        self.aois = pd.DataFrame()
+        self.dash = pd.DataFrame()
+        self.mop = pd.DataFrame()
+        self.lifesight = pd.DataFrame()
+        self.survey = pd.DataFrame()
+
+        self.db = DbConnection(secret_yaml_path)
+
+    # Get aoi filter for campaign
+    def _get_aois_filter(self):
+        data = self.db.query(
+            f&#34;&#34;&#34;
+            select campaign from aois
+            where campaign like &#39;%{self.campaign_id}%&#39;
+            limit 1
+            &#34;&#34;&#34;
+        )
+        if data.empty:
+            return None
+        else:
+            return {&#34;campaign&#34;: [data[&#34;campaign&#34;][0]]}
+
+    # Get survey filter for campaign TODO: make more robust to handle bad messaging format
+    def _get_survey_filter(self):
+        return {&#34;messaging&#34;: [self.campaign_id]}
+
+    # Get dash_table filter for campaign
+    def _get_dash_filter(self):
+        if &#34;NT&#34; in self.campaign_id:
+            project_id = &#34;Nutmeg - PRO-12767&#34;
+        elif &#34;OT&#34; in self.campaign_id:
+            project_id = &#34;Oak - PRO-12766&#34;
+        else:
+            raise AssertionError(&#34;Unrecognized campaign ID, should be NTXX or OTXX&#34;)
+        data = self.db.query(
+            f&#34;&#34;&#34;
+            select campaign_name, project from dash_table
+            where campaign_name like &#39;%{self.campaign_id}%&#39;
+            limit 1
+            &#34;&#34;&#34;
+        )
+        if data.empty:
+            return None
+        else:
+            return {
+                &#34;project&#34;: [data[&#34;project&#34;][0]],
+                &#34;campaign_name&#34;: [data[&#34;campaign_name&#34;][0]],
+            }
+
+    # Get mop_table filter for campaign
+    def _get_mop_filter(self):
+        data = self.db.query(
+            f&#34;&#34;&#34;
+            select adtype, campaign from mop_table
+            where project = &#39;{self.project_id}&#39;
+            and (adtype like &#39;%{self.campaign_id}%&#39;
+            or campaign like &#39;%{self.campaign_id}%&#39;)
+            limit 1
+            &#34;&#34;&#34;
+        )
+        # Select either adtype or campaign column as filter for that campaign
+        if self.campaign_id in data[&#34;adtype&#34;][0]:
+            return {&#34;project&#34;: [self.project_id], &#34;adtype&#34;: [data[&#34;adtype&#34;][0]]}
+        elif self.campaign_id in data[&#34;campaign&#34;][0]:
+            return {&#34;project&#34;: [self.project_id], &#34;campaign&#34;: [data[&#34;campaign&#34;][0]]}
+        else:
+            return None
+
+    # Extract message in &lt;message&gt;-&lt;geohash&gt; like string
+    @staticmethod
+    def extract_message(string):
+        match = re.match(&#34;(.*)-.*&#34;, string)
+        if match:
+            return match[1]
+        else:
+            return None
+
+    # Extract aoi name in &lt;message&gt;-&lt;geohash&gt; like string
+    def extract_aoi(self, string):
+        match = re.match(&#34;.*-(.*)&#34;, string)
+        if match:
+            return match[1]
+        elif string in list(self.aois[&#34;geohash&#34;]):
+            return self.aois[self.aois[&#34;geohash&#34;] == string][&#34;name&#34;].values[0]
+        else:
+            return None
+
+    # Load Areas of Interest
+    def load_aois(self):
+        aois_filter = self._get_aois_filter()
+        if filter:
+            aois = self.db.query(
+                f&#34;&#34;&#34;
+                select * from aois 
+                {_where_clause(aois_filter)}
+                &#34;&#34;&#34;
+            )
+            aois[&#34;latitude&#34;] = aois[&#34;latitude&#34;].astype(float)
+            aois[&#34;longitude&#34;] = aois[&#34;longitude&#34;].astype(float)
+
+            print(f&#34;- {len(aois)} AOIS found in public.aois&#34;)
+            self.aois = aois
+        else:
+            print(f&#34;x no AOI&#34;)
+
+    # Load impressions summary table
+    def load_dash(self):
+        dash_filter = self._get_dash_filter()
+
+        if dash_filter:
+            dash = self.db.query(
+                f&#34;&#34;&#34;
+                select project, adtype, impressions, clicks, date_served, message, assetid
+                from dash_table
+                {_where_clause(dash_filter)} 
+                &#34;&#34;&#34;
+            )
+
+            # Format dates
+            dash[&#34;date_served&#34;] = pd.to_datetime(dash[&#34;date_served&#34;])
+
+            if not self.aois.empty:
+                dash[&#34;geohash&#34;] = dash[&#34;message&#34;].apply(lambda m: self.extract_aoi(m))
+                dash[&#34;aoi&#34;] = dash[&#34;geohash&#34;].replace(
+                    dict(zip(self.aois[&#34;message&#34;].tolist(), self.aois[&#34;name&#34;].tolist()))
+                )
+            else:
+                print(&#34;! could not enrich dash data with aoi&#34;)
+            dash[&#34;message&#34;] = dash[&#34;message&#34;].apply(self.extract_message)
+
+            print(f&#34;- {len(dash)} rows found in public.dash_table&#34;)
+            self.dash = dash
+        else:
+            print(f&#34;x no dash data&#34;)
+
+    # Load full impressions table
+    def load_mop(self):
+        mop_filter = self._get_mop_filter()
+
+        if mop_filter:
+            mop = self.db.query(
+                f&#34;&#34;&#34;
+                select date_served, impressions, clicks, mobile_id, latitude, longitude, placement, project, assetid, 
+                adtype, hourserved, targeting, message, format, message
+                from mop_table 
+                {_where_clause(mop_filter)}
+                &#34;&#34;&#34;
+            )
+
+            if len(mop) == 0:
+                raise KeyError(
+                    &#34;Filtered MOP table is empty. Please check the filters parameters and/or RDS table&#34;
+                )
+
+            # dtype changes (reduces size of the dataset)
+            cols_to_category = [
+                &#34;placement&#34;,
+                &#34;project&#34;,
+                &#34;assetid&#34;,
+                &#34;adtype&#34;,
+                &#34;format&#34;,
+                &#34;message&#34;,
+            ]
+            for c in cols_to_category:
+                mop[c] = mop[c].astype(&#34;category&#34;)
+
+            mop[&#34;date_served&#34;] = pd.to_datetime(mop[&#34;date_served&#34;])
+            mop[&#34;latitude&#34;] = pd.to_numeric(mop[&#34;latitude&#34;])
+            mop[&#34;longitude&#34;] = pd.to_numeric(mop[&#34;longitude&#34;])
+
+            if not self.aois.empty:
+                mop[&#34;geohash&#34;] = mop[&#34;message&#34;].apply(lambda m: self.extract_aoi(m))
+                mop[&#34;aoi&#34;] = mop[&#34;geohash&#34;].replace(
+                    dict(zip(self.aois[&#34;message&#34;].tolist(), self.aois[&#34;name&#34;].tolist()))
+                )
+            mop[&#34;message&#34;] = mop[&#34;message&#34;].apply(self.extract_message)
+
+            print(f&#34;- {len(mop)} impressions found in public.mop_table&#34;)
+            self.mop = mop.drop(columns=[&#34;message.1&#34;])
+
+        else:
+            print(f&#34;x no dash data&#34;)
+
+    # Load Patterns of Life data from lifesight
+    def load_lifesight(
+        self,
+    ):
+        # TODO: manual_maids=None (add option to provide MAIDs manually)
+        mop_filter = self._get_mop_filter()
+
+        if mop_filter:
+            # NB: we use lifesight_raw_2 as main lifesight table
+            lifesight = self.db.query(
+                f&#34;&#34;&#34;
+                select *
+                from lifesight_raw_2 lr
+                inner join (select mobile_id from mop_table mt {_where_clause(mop_filter)}) as m 
+                on lr.mobile_id = m.mobile_id
+                &#34;&#34;&#34;
+            )
+
+            # Eliminate duplicates
+            lifesight = lifesight.drop_duplicates(subset=[&#34;mobile_id&#34;])
+
+            if not lifesight.empty:
+                print(f&#34;- {len(lifesight)} POL rows found in public.lifesight_raw_2&#34;)
+                self.lifesight = lifesight
+        else:
+            print(&#34;x need maids from mop to load lifesight data&#34;)
+
+    # Load survey results from new_survey_data
+    def load_survey(self):
+        survey_filter = self._get_survey_filter()
+
+        survey = self.db.query(
+            f&#34;&#34;&#34;
+            select *
+            from new_survey_data
+            {_where_clause(survey_filter)} 
+            &#34;&#34;&#34;
+        )
+        if not survey.empty:
+            print(f&#34;- {len(survey)} survey answers found in public.new_survey_data&#34;)
+            self.survey = survey
+        else:
+            print(f&#34;x no survey data&#34;)
+
+    def load_all(self):
+        print(&#34;Loading &#34; + self.campaign_id + &#34; data from AWS...&#34;)
+
+        self.load_aois()
+        self.load_dash()
+        self.load_mop()
+        self.load_lifesight()
+        self.load_survey()
+
+        print(&#34;Done!&#34;)
+
+
+# Return a where clause as a string from a dictionary of lists
+# The clause applies a strict AND to all parameters
+def _where_clause(dict_filters):
+    first = True
+    sub_sql_where = &#34;where &#34;
+    for var, val in dict_filters.items():
+        if first:
+            first = False
+        else:
+            sub_sql_where = sub_sql_where + &#34;and &#34;
+        if type(val) == str:
+            val = list(val)
+        sub_sql_where = (
+            sub_sql_where + f&#34;&#34;&#34;{var} in ({&#39;,&#39;.join([f&#34;&#39;{v}&#39;&#34; for v in val])}) &#34;&#34;&#34;
+        )
+    return sub_sql_where</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="reportlib.datamodule.Data"><code class="flex name class">
+<span>class <span class="ident">Data</span></span>
+<span>(</span><span>secret_yaml_path, campaign_id)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Loads and hosts common ATOM data like aois, dashboard data (dash), impressions (mop), etc.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>secret_yaml_path</code></strong> :&ensp;<code>str</code></dt>
+<dd>Relative path of the secret.yaml file</dd>
+<dt><strong><code>campaign_id</code></strong> :&ensp;<code>str</code></dt>
+<dd>Currently supports NTXX and OTXX schemes</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<p>A pandas DataFrame with the query result</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class Data:
+    &#34;&#34;&#34;
+    Loads and hosts common ATOM data like aois, dashboard data (dash), impressions (mop), etc.
+
+    Args:
+        secret_yaml_path (str): Relative path of the secret.yaml file
+        campaign_id (str): Currently supports NTXX and OTXX schemes
+
+    Returns:
+        A pandas DataFrame with the query result
+    &#34;&#34;&#34;
+
+    def __init__(self, secret_yaml_path, campaign_id):
+        if &#34;NT&#34; in campaign_id:
+            self.project_id = &#34;Nutmeg - PRO-12767&#34;
+        elif &#34;OT&#34; in campaign_id:
+            self.project_id = &#34;Oak - PRO-12766&#34;
+        else:
+            raise AssertionError(&#34;Unrecognized campaign ID, should be NTXX or OTXX&#34;)
+        self.campaign_id = campaign_id
+        self.aois = pd.DataFrame()
+        self.dash = pd.DataFrame()
+        self.mop = pd.DataFrame()
+        self.lifesight = pd.DataFrame()
+        self.survey = pd.DataFrame()
+
+        self.db = DbConnection(secret_yaml_path)
+
+    # Get aoi filter for campaign
+    def _get_aois_filter(self):
+        data = self.db.query(
+            f&#34;&#34;&#34;
+            select campaign from aois
+            where campaign like &#39;%{self.campaign_id}%&#39;
+            limit 1
+            &#34;&#34;&#34;
+        )
+        if data.empty:
+            return None
+        else:
+            return {&#34;campaign&#34;: [data[&#34;campaign&#34;][0]]}
+
+    # Get survey filter for campaign TODO: make more robust to handle bad messaging format
+    def _get_survey_filter(self):
+        return {&#34;messaging&#34;: [self.campaign_id]}
+
+    # Get dash_table filter for campaign
+    def _get_dash_filter(self):
+        if &#34;NT&#34; in self.campaign_id:
+            project_id = &#34;Nutmeg - PRO-12767&#34;
+        elif &#34;OT&#34; in self.campaign_id:
+            project_id = &#34;Oak - PRO-12766&#34;
+        else:
+            raise AssertionError(&#34;Unrecognized campaign ID, should be NTXX or OTXX&#34;)
+        data = self.db.query(
+            f&#34;&#34;&#34;
+            select campaign_name, project from dash_table
+            where campaign_name like &#39;%{self.campaign_id}%&#39;
+            limit 1
+            &#34;&#34;&#34;
+        )
+        if data.empty:
+            return None
+        else:
+            return {
+                &#34;project&#34;: [data[&#34;project&#34;][0]],
+                &#34;campaign_name&#34;: [data[&#34;campaign_name&#34;][0]],
+            }
+
+    # Get mop_table filter for campaign
+    def _get_mop_filter(self):
+        data = self.db.query(
+            f&#34;&#34;&#34;
+            select adtype, campaign from mop_table
+            where project = &#39;{self.project_id}&#39;
+            and (adtype like &#39;%{self.campaign_id}%&#39;
+            or campaign like &#39;%{self.campaign_id}%&#39;)
+            limit 1
+            &#34;&#34;&#34;
+        )
+        # Select either adtype or campaign column as filter for that campaign
+        if self.campaign_id in data[&#34;adtype&#34;][0]:
+            return {&#34;project&#34;: [self.project_id], &#34;adtype&#34;: [data[&#34;adtype&#34;][0]]}
+        elif self.campaign_id in data[&#34;campaign&#34;][0]:
+            return {&#34;project&#34;: [self.project_id], &#34;campaign&#34;: [data[&#34;campaign&#34;][0]]}
+        else:
+            return None
+
+    # Extract message in &lt;message&gt;-&lt;geohash&gt; like string
+    @staticmethod
+    def extract_message(string):
+        match = re.match(&#34;(.*)-.*&#34;, string)
+        if match:
+            return match[1]
+        else:
+            return None
+
+    # Extract aoi name in &lt;message&gt;-&lt;geohash&gt; like string
+    def extract_aoi(self, string):
+        match = re.match(&#34;.*-(.*)&#34;, string)
+        if match:
+            return match[1]
+        elif string in list(self.aois[&#34;geohash&#34;]):
+            return self.aois[self.aois[&#34;geohash&#34;] == string][&#34;name&#34;].values[0]
+        else:
+            return None
+
+    # Load Areas of Interest
+    def load_aois(self):
+        aois_filter = self._get_aois_filter()
+        if filter:
+            aois = self.db.query(
+                f&#34;&#34;&#34;
+                select * from aois 
+                {_where_clause(aois_filter)}
+                &#34;&#34;&#34;
+            )
+            aois[&#34;latitude&#34;] = aois[&#34;latitude&#34;].astype(float)
+            aois[&#34;longitude&#34;] = aois[&#34;longitude&#34;].astype(float)
+
+            print(f&#34;- {len(aois)} AOIS found in public.aois&#34;)
+            self.aois = aois
+        else:
+            print(f&#34;x no AOI&#34;)
+
+    # Load impressions summary table
+    def load_dash(self):
+        dash_filter = self._get_dash_filter()
+
+        if dash_filter:
+            dash = self.db.query(
+                f&#34;&#34;&#34;
+                select project, adtype, impressions, clicks, date_served, message, assetid
+                from dash_table
+                {_where_clause(dash_filter)} 
+                &#34;&#34;&#34;
+            )
+
+            # Format dates
+            dash[&#34;date_served&#34;] = pd.to_datetime(dash[&#34;date_served&#34;])
+
+            if not self.aois.empty:
+                dash[&#34;geohash&#34;] = dash[&#34;message&#34;].apply(lambda m: self.extract_aoi(m))
+                dash[&#34;aoi&#34;] = dash[&#34;geohash&#34;].replace(
+                    dict(zip(self.aois[&#34;message&#34;].tolist(), self.aois[&#34;name&#34;].tolist()))
+                )
+            else:
+                print(&#34;! could not enrich dash data with aoi&#34;)
+            dash[&#34;message&#34;] = dash[&#34;message&#34;].apply(self.extract_message)
+
+            print(f&#34;- {len(dash)} rows found in public.dash_table&#34;)
+            self.dash = dash
+        else:
+            print(f&#34;x no dash data&#34;)
+
+    # Load full impressions table
+    def load_mop(self):
+        mop_filter = self._get_mop_filter()
+
+        if mop_filter:
+            mop = self.db.query(
+                f&#34;&#34;&#34;
+                select date_served, impressions, clicks, mobile_id, latitude, longitude, placement, project, assetid, 
+                adtype, hourserved, targeting, message, format, message
+                from mop_table 
+                {_where_clause(mop_filter)}
+                &#34;&#34;&#34;
+            )
+
+            if len(mop) == 0:
+                raise KeyError(
+                    &#34;Filtered MOP table is empty. Please check the filters parameters and/or RDS table&#34;
+                )
+
+            # dtype changes (reduces size of the dataset)
+            cols_to_category = [
+                &#34;placement&#34;,
+                &#34;project&#34;,
+                &#34;assetid&#34;,
+                &#34;adtype&#34;,
+                &#34;format&#34;,
+                &#34;message&#34;,
+            ]
+            for c in cols_to_category:
+                mop[c] = mop[c].astype(&#34;category&#34;)
+
+            mop[&#34;date_served&#34;] = pd.to_datetime(mop[&#34;date_served&#34;])
+            mop[&#34;latitude&#34;] = pd.to_numeric(mop[&#34;latitude&#34;])
+            mop[&#34;longitude&#34;] = pd.to_numeric(mop[&#34;longitude&#34;])
+
+            if not self.aois.empty:
+                mop[&#34;geohash&#34;] = mop[&#34;message&#34;].apply(lambda m: self.extract_aoi(m))
+                mop[&#34;aoi&#34;] = mop[&#34;geohash&#34;].replace(
+                    dict(zip(self.aois[&#34;message&#34;].tolist(), self.aois[&#34;name&#34;].tolist()))
+                )
+            mop[&#34;message&#34;] = mop[&#34;message&#34;].apply(self.extract_message)
+
+            print(f&#34;- {len(mop)} impressions found in public.mop_table&#34;)
+            self.mop = mop.drop(columns=[&#34;message.1&#34;])
+
+        else:
+            print(f&#34;x no dash data&#34;)
+
+    # Load Patterns of Life data from lifesight
+    def load_lifesight(
+        self,
+    ):
+        # TODO: manual_maids=None (add option to provide MAIDs manually)
+        mop_filter = self._get_mop_filter()
+
+        if mop_filter:
+            # NB: we use lifesight_raw_2 as main lifesight table
+            lifesight = self.db.query(
+                f&#34;&#34;&#34;
+                select *
+                from lifesight_raw_2 lr
+                inner join (select mobile_id from mop_table mt {_where_clause(mop_filter)}) as m 
+                on lr.mobile_id = m.mobile_id
+                &#34;&#34;&#34;
+            )
+
+            # Eliminate duplicates
+            lifesight = lifesight.drop_duplicates(subset=[&#34;mobile_id&#34;])
+
+            if not lifesight.empty:
+                print(f&#34;- {len(lifesight)} POL rows found in public.lifesight_raw_2&#34;)
+                self.lifesight = lifesight
+        else:
+            print(&#34;x need maids from mop to load lifesight data&#34;)
+
+    # Load survey results from new_survey_data
+    def load_survey(self):
+        survey_filter = self._get_survey_filter()
+
+        survey = self.db.query(
+            f&#34;&#34;&#34;
+            select *
+            from new_survey_data
+            {_where_clause(survey_filter)} 
+            &#34;&#34;&#34;
+        )
+        if not survey.empty:
+            print(f&#34;- {len(survey)} survey answers found in public.new_survey_data&#34;)
+            self.survey = survey
+        else:
+            print(f&#34;x no survey data&#34;)
+
+    def load_all(self):
+        print(&#34;Loading &#34; + self.campaign_id + &#34; data from AWS...&#34;)
+
+        self.load_aois()
+        self.load_dash()
+        self.load_mop()
+        self.load_lifesight()
+        self.load_survey()
+
+        print(&#34;Done!&#34;)</code></pre>
+</details>
+<h3>Static methods</h3>
+<dl>
+<dt id="reportlib.datamodule.Data.extract_message"><code class="name flex">
+<span>def <span class="ident">extract_message</span></span>(<span>string)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@staticmethod
+def extract_message(string):
+    match = re.match(&#34;(.*)-.*&#34;, string)
+    if match:
+        return match[1]
+    else:
+        return None</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Methods</h3>
+<dl>
+<dt id="reportlib.datamodule.Data.extract_aoi"><code class="name flex">
+<span>def <span class="ident">extract_aoi</span></span>(<span>self, string)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def extract_aoi(self, string):
+    match = re.match(&#34;.*-(.*)&#34;, string)
+    if match:
+        return match[1]
+    elif string in list(self.aois[&#34;geohash&#34;]):
+        return self.aois[self.aois[&#34;geohash&#34;] == string][&#34;name&#34;].values[0]
+    else:
+        return None</code></pre>
+</details>
+</dd>
+<dt id="reportlib.datamodule.Data.load_all"><code class="name flex">
+<span>def <span class="ident">load_all</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def load_all(self):
+    print(&#34;Loading &#34; + self.campaign_id + &#34; data from AWS...&#34;)
+
+    self.load_aois()
+    self.load_dash()
+    self.load_mop()
+    self.load_lifesight()
+    self.load_survey()
+
+    print(&#34;Done!&#34;)</code></pre>
+</details>
+</dd>
+<dt id="reportlib.datamodule.Data.load_aois"><code class="name flex">
+<span>def <span class="ident">load_aois</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def load_aois(self):
+    aois_filter = self._get_aois_filter()
+    if filter:
+        aois = self.db.query(
+            f&#34;&#34;&#34;
+            select * from aois 
+            {_where_clause(aois_filter)}
+            &#34;&#34;&#34;
+        )
+        aois[&#34;latitude&#34;] = aois[&#34;latitude&#34;].astype(float)
+        aois[&#34;longitude&#34;] = aois[&#34;longitude&#34;].astype(float)
+
+        print(f&#34;- {len(aois)} AOIS found in public.aois&#34;)
+        self.aois = aois
+    else:
+        print(f&#34;x no AOI&#34;)</code></pre>
+</details>
+</dd>
+<dt id="reportlib.datamodule.Data.load_dash"><code class="name flex">
+<span>def <span class="ident">load_dash</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def load_dash(self):
+    dash_filter = self._get_dash_filter()
+
+    if dash_filter:
+        dash = self.db.query(
+            f&#34;&#34;&#34;
+            select project, adtype, impressions, clicks, date_served, message, assetid
+            from dash_table
+            {_where_clause(dash_filter)} 
+            &#34;&#34;&#34;
+        )
+
+        # Format dates
+        dash[&#34;date_served&#34;] = pd.to_datetime(dash[&#34;date_served&#34;])
+
+        if not self.aois.empty:
+            dash[&#34;geohash&#34;] = dash[&#34;message&#34;].apply(lambda m: self.extract_aoi(m))
+            dash[&#34;aoi&#34;] = dash[&#34;geohash&#34;].replace(
+                dict(zip(self.aois[&#34;message&#34;].tolist(), self.aois[&#34;name&#34;].tolist()))
+            )
+        else:
+            print(&#34;! could not enrich dash data with aoi&#34;)
+        dash[&#34;message&#34;] = dash[&#34;message&#34;].apply(self.extract_message)
+
+        print(f&#34;- {len(dash)} rows found in public.dash_table&#34;)
+        self.dash = dash
+    else:
+        print(f&#34;x no dash data&#34;)</code></pre>
+</details>
+</dd>
+<dt id="reportlib.datamodule.Data.load_lifesight"><code class="name flex">
+<span>def <span class="ident">load_lifesight</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def load_lifesight(
+    self,
+):
+    # TODO: manual_maids=None (add option to provide MAIDs manually)
+    mop_filter = self._get_mop_filter()
+
+    if mop_filter:
+        # NB: we use lifesight_raw_2 as main lifesight table
+        lifesight = self.db.query(
+            f&#34;&#34;&#34;
+            select *
+            from lifesight_raw_2 lr
+            inner join (select mobile_id from mop_table mt {_where_clause(mop_filter)}) as m 
+            on lr.mobile_id = m.mobile_id
+            &#34;&#34;&#34;
+        )
+
+        # Eliminate duplicates
+        lifesight = lifesight.drop_duplicates(subset=[&#34;mobile_id&#34;])
+
+        if not lifesight.empty:
+            print(f&#34;- {len(lifesight)} POL rows found in public.lifesight_raw_2&#34;)
+            self.lifesight = lifesight
+    else:
+        print(&#34;x need maids from mop to load lifesight data&#34;)</code></pre>
+</details>
+</dd>
+<dt id="reportlib.datamodule.Data.load_mop"><code class="name flex">
+<span>def <span class="ident">load_mop</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def load_mop(self):
+    mop_filter = self._get_mop_filter()
+
+    if mop_filter:
+        mop = self.db.query(
+            f&#34;&#34;&#34;
+            select date_served, impressions, clicks, mobile_id, latitude, longitude, placement, project, assetid, 
+            adtype, hourserved, targeting, message, format, message
+            from mop_table 
+            {_where_clause(mop_filter)}
+            &#34;&#34;&#34;
+        )
+
+        if len(mop) == 0:
+            raise KeyError(
+                &#34;Filtered MOP table is empty. Please check the filters parameters and/or RDS table&#34;
+            )
+
+        # dtype changes (reduces size of the dataset)
+        cols_to_category = [
+            &#34;placement&#34;,
+            &#34;project&#34;,
+            &#34;assetid&#34;,
+            &#34;adtype&#34;,
+            &#34;format&#34;,
+            &#34;message&#34;,
+        ]
+        for c in cols_to_category:
+            mop[c] = mop[c].astype(&#34;category&#34;)
+
+        mop[&#34;date_served&#34;] = pd.to_datetime(mop[&#34;date_served&#34;])
+        mop[&#34;latitude&#34;] = pd.to_numeric(mop[&#34;latitude&#34;])
+        mop[&#34;longitude&#34;] = pd.to_numeric(mop[&#34;longitude&#34;])
+
+        if not self.aois.empty:
+            mop[&#34;geohash&#34;] = mop[&#34;message&#34;].apply(lambda m: self.extract_aoi(m))
+            mop[&#34;aoi&#34;] = mop[&#34;geohash&#34;].replace(
+                dict(zip(self.aois[&#34;message&#34;].tolist(), self.aois[&#34;name&#34;].tolist()))
+            )
+        mop[&#34;message&#34;] = mop[&#34;message&#34;].apply(self.extract_message)
+
+        print(f&#34;- {len(mop)} impressions found in public.mop_table&#34;)
+        self.mop = mop.drop(columns=[&#34;message.1&#34;])
+
+    else:
+        print(f&#34;x no dash data&#34;)</code></pre>
+</details>
+</dd>
+<dt id="reportlib.datamodule.Data.load_survey"><code class="name flex">
+<span>def <span class="ident">load_survey</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def load_survey(self):
+    survey_filter = self._get_survey_filter()
+
+    survey = self.db.query(
+        f&#34;&#34;&#34;
+        select *
+        from new_survey_data
+        {_where_clause(survey_filter)} 
+        &#34;&#34;&#34;
+    )
+    if not survey.empty:
+        print(f&#34;- {len(survey)} survey answers found in public.new_survey_data&#34;)
+        self.survey = survey
+    else:
+        print(f&#34;x no survey data&#34;)</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+<dt id="reportlib.datamodule.DbConnection"><code class="flex name class">
+<span>class <span class="ident">DbConnection</span></span>
+<span>(</span><span>secret_yaml_path)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Creates and maintains a connection to the Atom RDS database to run queries</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>secret_yaml_path</code></strong> :&ensp;<code>str</code></dt>
+<dd>Relative path of the secret.yaml file TODO: add template in doc/readme</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class DbConnection:
+    &#34;&#34;&#34;
+    Creates and maintains a connection to the Atom RDS database to run queries
+
+    Args:
+        secret_yaml_path (str): Relative path of the secret.yaml file TODO: add template in doc/readme
+    &#34;&#34;&#34;
+
+    def __init__(self, secret_yaml_path):
+        with open(secret_yaml_path) as file:
+            secrets = yaml.load(file, Loader=yaml.FullLoader)
+            dbuser = secrets[&#34;rds&#34;][&#34;dbuser&#34;]
+            # NB: in secrets.yaml, special characters such as those that may be used in the password need to be URL
+            # encoded to be parsed correctly, like @ must become %40
+            dbpassword = urllib.parse.quote_plus(secrets[&#34;rds&#34;][&#34;dbpassword&#34;])
+            dbhost = secrets[&#34;rds&#34;][&#34;dbhost&#34;]
+            dbport = secrets[&#34;rds&#34;][&#34;dbport&#34;]
+
+            url = f&#34;postgresql://{dbuser}:{dbpassword}@{dbhost}:{str(dbport)}/postgres&#34;
+
+            db_engine = sa.create_engine(url)
+            self.db_engine = db_engine
+            print(&#34;Connected to database&#34;)
+
+    def query(self, querystring):
+        &#34;&#34;&#34;
+        Run query on the Atom RDS
+
+        Args:
+            querystring (str): A Postgresql query string
+
+        Returns:
+            A pandas DataFrame with the query result
+        &#34;&#34;&#34;
+        copy_sql = &#34;COPY ({query}) TO STDOUT WITH CSV {head}&#34;.format(
+            query=querystring, head=&#34;HEADER&#34;
+        )
+        cur = self.db_engine.raw_connection().cursor()
+        store = io.StringIO()
+        cur.copy_expert(copy_sql, store)
+        store.seek(0)
+        return pd.read_csv(store, low_memory=False)</code></pre>
+</details>
+<h3>Methods</h3>
+<dl>
+<dt id="reportlib.datamodule.DbConnection.query"><code class="name flex">
+<span>def <span class="ident">query</span></span>(<span>self, querystring)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Run query on the Atom RDS</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>querystring</code></strong> :&ensp;<code>str</code></dt>
+<dd>A Postgresql query string</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<p>A pandas DataFrame with the query result</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def query(self, querystring):
+    &#34;&#34;&#34;
+    Run query on the Atom RDS
+
+    Args:
+        querystring (str): A Postgresql query string
+
+    Returns:
+        A pandas DataFrame with the query result
+    &#34;&#34;&#34;
+    copy_sql = &#34;COPY ({query}) TO STDOUT WITH CSV {head}&#34;.format(
+        query=querystring, head=&#34;HEADER&#34;
+    )
+    cur = self.db_engine.raw_connection().cursor()
+    store = io.StringIO()
+    cur.copy_expert(copy_sql, store)
+    store.seek(0)
+    return pd.read_csv(store, low_memory=False)</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+</dl>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="reportlib" href="index.html">reportlib</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="reportlib.datamodule.Data" href="#reportlib.datamodule.Data">Data</a></code></h4>
+<ul class="two-column">
+<li><code><a title="reportlib.datamodule.Data.extract_aoi" href="#reportlib.datamodule.Data.extract_aoi">extract_aoi</a></code></li>
+<li><code><a title="reportlib.datamodule.Data.extract_message" href="#reportlib.datamodule.Data.extract_message">extract_message</a></code></li>
+<li><code><a title="reportlib.datamodule.Data.load_all" href="#reportlib.datamodule.Data.load_all">load_all</a></code></li>
+<li><code><a title="reportlib.datamodule.Data.load_aois" href="#reportlib.datamodule.Data.load_aois">load_aois</a></code></li>
+<li><code><a title="reportlib.datamodule.Data.load_dash" href="#reportlib.datamodule.Data.load_dash">load_dash</a></code></li>
+<li><code><a title="reportlib.datamodule.Data.load_lifesight" href="#reportlib.datamodule.Data.load_lifesight">load_lifesight</a></code></li>
+<li><code><a title="reportlib.datamodule.Data.load_mop" href="#reportlib.datamodule.Data.load_mop">load_mop</a></code></li>
+<li><code><a title="reportlib.datamodule.Data.load_survey" href="#reportlib.datamodule.Data.load_survey">load_survey</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="reportlib.datamodule.DbConnection" href="#reportlib.datamodule.DbConnection">DbConnection</a></code></h4>
+<ul class="">
+<li><code><a title="reportlib.datamodule.DbConnection.query" href="#reportlib.datamodule.DbConnection.query">query</a></code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+</footer>
+</body>
+</html>
