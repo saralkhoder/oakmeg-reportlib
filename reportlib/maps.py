@@ -1,4 +1,6 @@
+"""Module for creating Atom maps"""
 import io
+import pandas as pd
 from enum import Enum
 from pathlib import Path
 from PIL import Image
@@ -30,8 +32,16 @@ class Palette(Enum):
     AOI = "blue"
 
 
-class AtomMap(folium.Map):
-    def __init__(self, tile):
+class AtomMap:
+    """
+    A map object with multiple layers for displaying aois, points, geojson, chloropleth, ...
+    Choose the base style from `reportlib.maps.Tile`
+
+    Returns:
+        A pandas DataFrame with the query result
+    """
+
+    def __init__(self, tile: Tile):
         self.fmap = create_map(tile)
         self.layers = []
         self.bounds = {"sw": [], "ne": []}
@@ -40,8 +50,14 @@ class AtomMap(folium.Map):
         self.fmap.add_child(folium.LayerControl())
         self.fmap.add_child(folium.plugins.MeasureControl(primary_length_unit="meters"))
 
-    # Update SW/NE bounds to include new geodata
-    def _update_bounds(self, lat, lon):
+    def _update_bounds(self, lat: list, lon: list) -> object:
+        """
+        Update SW/NE bounds to include new geodata
+
+        Returns:
+            self, for chaining
+        """
+
         def update_bound(prop, func):
             if self.bounds[prop]:
                 self.bounds[prop] = [
@@ -54,7 +70,13 @@ class AtomMap(folium.Map):
         update_bound("sw", min)
         update_bound("ne", max)
 
-    def add_aois(self, aois):
+    def add_aois(self, aois: pd.DataFrame) -> None:
+        """
+        Add a layer with AOIs to display
+
+        Args:
+            aois (DataFrame): The aois to display on the map
+        """
         for index, aoi in aois.iterrows():
             popup = folium.Popup(
                 html=f"<b>{aoi['name']}</b></br>",
@@ -74,20 +96,45 @@ class AtomMap(folium.Map):
         self._update_bounds(aois["latitude"], aois["longitude"])
         return self  # for serialisation
 
-    def show(self):
+    def show(self) -> object:
+        """
+        Show AOIs layer on the map
+
+        Returns:
+            self, for displaying / chaining
+        """
         print("todo: compute bounds and feature groups")
         print(self.bounds)
         self.fmap.fit_bounds([self.bounds["sw"], self.bounds["ne"]])
         return self.fmap
 
 
-def create_map(tile):
+def create_map(tile: Tile) -> folium.Map:
+    """
+    Create an empty folium map
+
+    Args:
+        tile (Tile): the base tile to use
+
+    Returns:
+        The created folium map
+    """
     return folium.Map(tiles=None).add_child(
         folium.TileLayer(tile.value, name="base_map", attr="atom")
     )
 
 
-def save_map(fmap, to):
+def save_map(fmap: folium.Map, to: str) -> None:
+    """
+    Save the map in a generated folder. Note that the process takes ~5 seconds
+
+    Args:
+        fmap (folium.Map): the map to save
+        to (str): the new file name, without extension
+
+    Returns:
+        The created folium map
+    """
     Path("generated").mkdir(parents=True, exist_ok=True)
     img_data = fmap._to_png(5)
     img = Image.open(io.BytesIO(img_data))

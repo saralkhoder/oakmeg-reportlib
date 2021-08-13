@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
 <title>reportlib.maps API documentation</title>
-<meta name="description" content="" />
+<meta name="description" content="Module for creating Atom maps" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
 <link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
@@ -22,11 +22,14 @@
 <h1 class="title">Module <code>reportlib.maps</code></h1>
 </header>
 <section id="section-intro">
+<p>Module for creating Atom maps</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">import io
+<pre><code class="python">&#34;&#34;&#34;Module for creating Atom maps&#34;&#34;&#34;
+import io
+import pandas as pd
 from enum import Enum
 from pathlib import Path
 from PIL import Image
@@ -58,8 +61,15 @@ class Palette(Enum):
     AOI = &#34;blue&#34;
 
 
-class AtomMap(folium.Map):
-    def __init__(self, tile):
+class AtomMap:
+    &#34;&#34;&#34;
+    A map object with multiple layers for displaying aois, points, geojson, chloropleth, ...
+    Choose the base style from `reportlib.maps.Tile`
+
+    Returns:
+        A pandas DataFrame with the query result
+    &#34;&#34;&#34;
+    def __init__(self, tile: Tile):
         self.fmap = create_map(tile)
         self.layers = []
         self.bounds = {&#34;sw&#34;: [], &#34;ne&#34;: []}
@@ -68,8 +78,13 @@ class AtomMap(folium.Map):
         self.fmap.add_child(folium.LayerControl())
         self.fmap.add_child(folium.plugins.MeasureControl(primary_length_unit=&#34;meters&#34;))
 
-    # Update SW/NE bounds to include new geodata
-    def _update_bounds(self, lat, lon):
+    def _update_bounds(self, lat: list, lon: list) -&gt; object:
+        &#34;&#34;&#34;
+        Update SW/NE bounds to include new geodata
+
+        Returns:
+            self, for chaining
+        &#34;&#34;&#34;
         def update_bound(prop, func):
             if self.bounds[prop]:
                 self.bounds[prop] = [
@@ -82,7 +97,13 @@ class AtomMap(folium.Map):
         update_bound(&#34;sw&#34;, min)
         update_bound(&#34;ne&#34;, max)
 
-    def add_aois(self, aois):
+    def add_aois(self, aois: pd.DataFrame) -&gt; None:
+        &#34;&#34;&#34;
+        Add a layer with AOIs to display
+
+        Args:
+            aois (DataFrame): The aois to display on the map
+        &#34;&#34;&#34;
         for index, aoi in aois.iterrows():
             popup = folium.Popup(
                 html=f&#34;&lt;b&gt;{aoi[&#39;name&#39;]}&lt;/b&gt;&lt;/br&gt;&#34;,
@@ -102,20 +123,45 @@ class AtomMap(folium.Map):
         self._update_bounds(aois[&#34;latitude&#34;], aois[&#34;longitude&#34;])
         return self  # for serialisation
 
-    def show(self):
+    def show(self) -&gt; object:
+        &#34;&#34;&#34;
+        Show AOIs layer on the map
+
+        Returns:
+            self, for displaying / chaining
+        &#34;&#34;&#34;
         print(&#34;todo: compute bounds and feature groups&#34;)
         print(self.bounds)
         self.fmap.fit_bounds([self.bounds[&#34;sw&#34;], self.bounds[&#34;ne&#34;]])
         return self.fmap
 
 
-def create_map(tile):
+def create_map(tile: Tile) -&gt; folium.Map:
+    &#34;&#34;&#34;
+    Create an empty folium map
+
+    Args:
+        tile (Tile): the base tile to use
+
+    Returns:
+        The created folium map
+    &#34;&#34;&#34;
     return folium.Map(tiles=None).add_child(
         folium.TileLayer(tile.value, name=&#34;base_map&#34;, attr=&#34;atom&#34;)
     )
 
 
-def save_map(fmap, to):
+def save_map(fmap: folium.Map, to: str) -&gt; None:
+    &#34;&#34;&#34;
+    Save the map in a generated folder. Note that the process takes ~5 seconds
+
+    Args:
+        fmap (folium.Map): the map to save
+        to (str): the new file name, without extension
+
+    Returns:
+        The created folium map
+    &#34;&#34;&#34;
     Path(&#34;generated&#34;).mkdir(parents=True, exist_ok=True)
     img_data = fmap._to_png(5)
     img = Image.open(io.BytesIO(img_data))
@@ -130,30 +176,65 @@ def save_map(fmap, to):
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
 <dt id="reportlib.maps.create_map"><code class="name flex">
-<span>def <span class="ident">create_map</span></span>(<span>tile)</span>
+<span>def <span class="ident">create_map</span></span>(<span>tile: <a title="reportlib.maps.Tile" href="#reportlib.maps.Tile">Tile</a>) ‑> folium.folium.Map</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Create an empty folium map</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>tile</code></strong> :&ensp;<code><a title="reportlib.maps.Tile" href="#reportlib.maps.Tile">Tile</a></code></dt>
+<dd>the base tile to use</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<p>The created folium map</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def create_map(tile):
+<pre><code class="python">def create_map(tile: Tile) -&gt; folium.Map:
+    &#34;&#34;&#34;
+    Create an empty folium map
+
+    Args:
+        tile (Tile): the base tile to use
+
+    Returns:
+        The created folium map
+    &#34;&#34;&#34;
     return folium.Map(tiles=None).add_child(
         folium.TileLayer(tile.value, name=&#34;base_map&#34;, attr=&#34;atom&#34;)
     )</code></pre>
 </details>
 </dd>
 <dt id="reportlib.maps.save_map"><code class="name flex">
-<span>def <span class="ident">save_map</span></span>(<span>fmap, to)</span>
+<span>def <span class="ident">save_map</span></span>(<span>fmap: folium.folium.Map, to: str) ‑> None</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Save the map in a generated folder. Note that the process takes ~5 seconds</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>fmap</code></strong> :&ensp;<code>folium.Map</code></dt>
+<dd>the map to save</dd>
+<dt><strong><code>to</code></strong> :&ensp;<code>str</code></dt>
+<dd>the new file name, without extension</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<p>The created folium map</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def save_map(fmap, to):
+<pre><code class="python">def save_map(fmap: folium.Map, to: str) -&gt; None:
+    &#34;&#34;&#34;
+    Save the map in a generated folder. Note that the process takes ~5 seconds
+
+    Args:
+        fmap (folium.Map): the map to save
+        to (str): the new file name, without extension
+
+    Returns:
+        The created folium map
+    &#34;&#34;&#34;
     Path(&#34;generated&#34;).mkdir(parents=True, exist_ok=True)
     img_data = fmap._to_png(5)
     img = Image.open(io.BytesIO(img_data))
@@ -167,102 +248,26 @@ def save_map(fmap, to):
 <dl>
 <dt id="reportlib.maps.AtomMap"><code class="flex name class">
 <span>class <span class="ident">AtomMap</span></span>
-<span>(</span><span>tile)</span>
+<span>(</span><span>tile: <a title="reportlib.maps.Tile" href="#reportlib.maps.Tile">Tile</a>)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Create a Map with Folium and Leaflet.js</p>
-<p>Generate a base map of given width and height with either default
-tilesets or a custom tileset URL. The following tilesets are built-in
-to Folium. Pass any of the following to the "tiles" keyword:</p>
-<pre><code>- "OpenStreetMap"
-- "Mapbox Bright" (Limited levels of zoom for free tiles)
-- "Mapbox Control Room" (Limited levels of zoom for free tiles)
-- "Stamen" (Terrain, Toner, and Watercolor)
-- "Cloudmade" (Must pass API key)
-- "Mapbox" (Must pass API key)
-- "CartoDB" (positron and dark_matter)
-</code></pre>
-<p>You can pass a custom tileset to Folium by passing a Leaflet-style
-URL to the tiles parameter: <code>http://{s}.yourtiles.com/{z}/{x}/{y}.png</code>.</p>
-<p>You can find a list of free tile providers here:
-<code>http://leaflet-extras.github.io/leaflet-providers/preview/</code>.
-Be sure to check their terms and conditions and to provide attribution
-with the <code>attr</code> keyword.</p>
-<h2 id="parameters">Parameters</h2>
-<dl>
-<dt><strong><code>location</code></strong> :&ensp;<code>tuple</code> or <code>list</code>, default <code>None</code></dt>
-<dd>Latitude and Longitude of Map (Northing, Easting).</dd>
-<dt><strong><code>width</code></strong> :&ensp;<code>pixel int</code> or <code>percentage string (default: '100%')</code></dt>
-<dd>Width of the map.</dd>
-<dt><strong><code>height</code></strong> :&ensp;<code>pixel int</code> or <code>percentage string (default: '100%')</code></dt>
-<dd>Height of the map.</dd>
-<dt><strong><code>tiles</code></strong> :&ensp;<code>str</code>, default <code>'OpenStreetMap'</code></dt>
-<dd>Map tileset to use. Can choose from a list of built-in tiles,
-pass a custom URL or pass <code>None</code> to create a map without tiles.
-For more advanced tile layer options, use the <code>TileLayer</code> class.</dd>
-<dt><strong><code>min_zoom</code></strong> :&ensp;<code>int</code>, default <code>0</code></dt>
-<dd>Minimum allowed zoom level for the tile layer that is created.</dd>
-<dt><strong><code>max_zoom</code></strong> :&ensp;<code>int</code>, default <code>18</code></dt>
-<dd>Maximum allowed zoom level for the tile layer that is created.</dd>
-<dt><strong><code>zoom_start</code></strong> :&ensp;<code>int</code>, default <code>10</code></dt>
-<dd>Initial zoom level for the map.</dd>
-<dt><strong><code>attr</code></strong> :&ensp;<code>string</code>, default <code>None</code></dt>
-<dd>Map tile attribution; only required if passing custom tile URL.</dd>
-<dt><strong><code>crs</code></strong> :&ensp;<code>str</code>, default <code>'EPSG3857'</code></dt>
-<dd>Defines coordinate reference systems for projecting geographical points
-into pixel (screen) coordinates and back.
-You can use Leaflet's values :
-* EPSG3857 : The most common CRS for online maps, used by almost all
-free and commercial tile providers. Uses Spherical Mercator projection.
-Set in by default in Map's crs option.
-* EPSG4326 : A common CRS among GIS enthusiasts.
-Uses simple Equirectangular projection.
-* EPSG3395 : Rarely used by some commercial tile providers.
-Uses Elliptical Mercator projection.
-* Simple : A simple CRS that maps longitude and latitude into
-x and y directly. May be used for maps of flat surfaces
-(e.g. game maps). Note that the y axis should still be inverted
-(going from bottom to top).</dd>
-<dt><strong><code>control_scale</code></strong> :&ensp;<code>bool</code>, default <code>False</code></dt>
-<dd>Whether to add a control scale on the map.</dd>
-<dt><strong><code>prefer_canvas</code></strong> :&ensp;<code>bool</code>, default <code>False</code></dt>
-<dd>Forces Leaflet to use the Canvas back-end (if available) for
-vector layers instead of SVG. This can increase performance
-considerably in some cases (e.g. many thousands of circle
-markers on the map).</dd>
-<dt><strong><code>no_touch</code></strong> :&ensp;<code>bool</code>, default <code>False</code></dt>
-<dd>Forces Leaflet to not use touch events even if it detects them.</dd>
-<dt><strong><code>disable_3d</code></strong> :&ensp;<code>bool</code>, default <code>False</code></dt>
-<dd>Forces Leaflet to not use hardware-accelerated CSS 3D
-transforms for positioning (which may cause glitches in some
-rare environments) even if they're supported.</dd>
-<dt><strong><code>zoom_control</code></strong> :&ensp;<code>bool</code>, default <code>True</code></dt>
-<dd>Display zoom controls on the map.</dd>
-<dt><strong><code>**kwargs</code></strong></dt>
-<dd>Additional keyword arguments are passed to Leaflets Map class:
-<a href="https://leafletjs.com/reference-1.6.0.html#map">https://leafletjs.com/reference-1.6.0.html#map</a></dd>
-</dl>
+<div class="desc"><p>A map object with multiple layers for displaying aois, points, geojson, chloropleth, &hellip;
+Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib.maps.Tile">Tile</a></code></p>
 <h2 id="returns">Returns</h2>
-<dl>
-<dt><code>Folium Map Object</code></dt>
-<dd>&nbsp;</dd>
-</dl>
-<h2 id="examples">Examples</h2>
-<pre><code class="language-python-repl">&gt;&gt;&gt; m = folium.Map(location=[45.523, -122.675], width=750, height=500)
-&gt;&gt;&gt; m = folium.Map(location=[45.523, -122.675], tiles='cartodb positron')
-&gt;&gt;&gt; m = folium.Map(
-...    location=[45.523, -122.675],
-...    zoom_start=2,
-...    tiles='https://api.mapbox.com/v4/mapbox.streets/{z}/{x}/{y}.png?access_token=mytoken',
-...    attr='Mapbox attribution'
-...)
-</code></pre></div>
+<p>A pandas DataFrame with the query result</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">class AtomMap(folium.Map):
-    def __init__(self, tile):
+<pre><code class="python">class AtomMap:
+    &#34;&#34;&#34;
+    A map object with multiple layers for displaying aois, points, geojson, chloropleth, ...
+    Choose the base style from `reportlib.maps.Tile`
+
+    Returns:
+        A pandas DataFrame with the query result
+    &#34;&#34;&#34;
+    def __init__(self, tile: Tile):
         self.fmap = create_map(tile)
         self.layers = []
         self.bounds = {&#34;sw&#34;: [], &#34;ne&#34;: []}
@@ -271,8 +276,13 @@ rare environments) even if they're supported.</dd>
         self.fmap.add_child(folium.LayerControl())
         self.fmap.add_child(folium.plugins.MeasureControl(primary_length_unit=&#34;meters&#34;))
 
-    # Update SW/NE bounds to include new geodata
-    def _update_bounds(self, lat, lon):
+    def _update_bounds(self, lat: list, lon: list) -&gt; object:
+        &#34;&#34;&#34;
+        Update SW/NE bounds to include new geodata
+
+        Returns:
+            self, for chaining
+        &#34;&#34;&#34;
         def update_bound(prop, func):
             if self.bounds[prop]:
                 self.bounds[prop] = [
@@ -285,7 +295,13 @@ rare environments) even if they're supported.</dd>
         update_bound(&#34;sw&#34;, min)
         update_bound(&#34;ne&#34;, max)
 
-    def add_aois(self, aois):
+    def add_aois(self, aois: pd.DataFrame) -&gt; None:
+        &#34;&#34;&#34;
+        Add a layer with AOIs to display
+
+        Args:
+            aois (DataFrame): The aois to display on the map
+        &#34;&#34;&#34;
         for index, aoi in aois.iterrows():
             popup = folium.Popup(
                 html=f&#34;&lt;b&gt;{aoi[&#39;name&#39;]}&lt;/b&gt;&lt;/br&gt;&#34;,
@@ -305,31 +321,41 @@ rare environments) even if they're supported.</dd>
         self._update_bounds(aois[&#34;latitude&#34;], aois[&#34;longitude&#34;])
         return self  # for serialisation
 
-    def show(self):
+    def show(self) -&gt; object:
+        &#34;&#34;&#34;
+        Show AOIs layer on the map
+
+        Returns:
+            self, for displaying / chaining
+        &#34;&#34;&#34;
         print(&#34;todo: compute bounds and feature groups&#34;)
         print(self.bounds)
         self.fmap.fit_bounds([self.bounds[&#34;sw&#34;], self.bounds[&#34;ne&#34;]])
         return self.fmap</code></pre>
 </details>
-<h3>Ancestors</h3>
-<ul class="hlist">
-<li>folium.folium.Map</li>
-<li>folium.elements.JSCSSMixin</li>
-<li>branca.element.MacroElement</li>
-<li>branca.element.Element</li>
-</ul>
 <h3>Methods</h3>
 <dl>
 <dt id="reportlib.maps.AtomMap.add_aois"><code class="name flex">
-<span>def <span class="ident">add_aois</span></span>(<span>self, aois)</span>
+<span>def <span class="ident">add_aois</span></span>(<span>self, aois: pandas.core.frame.DataFrame) ‑> None</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Add a layer with AOIs to display</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>aois</code></strong> :&ensp;<code>DataFrame</code></dt>
+<dd>The aois to display on the map</dd>
+</dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def add_aois(self, aois):
+<pre><code class="python">def add_aois(self, aois: pd.DataFrame) -&gt; None:
+    &#34;&#34;&#34;
+    Add a layer with AOIs to display
+
+    Args:
+        aois (DataFrame): The aois to display on the map
+    &#34;&#34;&#34;
     for index, aoi in aois.iterrows():
         popup = folium.Popup(
             html=f&#34;&lt;b&gt;{aoi[&#39;name&#39;]}&lt;/b&gt;&lt;/br&gt;&#34;,
@@ -351,15 +377,23 @@ rare environments) even if they're supported.</dd>
 </details>
 </dd>
 <dt id="reportlib.maps.AtomMap.show"><code class="name flex">
-<span>def <span class="ident">show</span></span>(<span>self)</span>
+<span>def <span class="ident">show</span></span>(<span>self) ‑> object</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Show AOIs layer on the map</p>
+<h2 id="returns">Returns</h2>
+<p>self, for displaying / chaining</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def show(self):
+<pre><code class="python">def show(self) -&gt; object:
+    &#34;&#34;&#34;
+    Show AOIs layer on the map
+
+    Returns:
+        self, for displaying / chaining
+    &#34;&#34;&#34;
     print(&#34;todo: compute bounds and feature groups&#34;)
     print(self.bounds)
     self.fmap.fit_bounds([self.bounds[&#34;sw&#34;], self.bounds[&#34;ne&#34;]])

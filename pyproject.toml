@@ -13,7 +13,7 @@ psycopg2-binary = "^2.9.1"
 SQLAlchemy = "^1.4.22"
 
 [tool.poetry.dev-dependencies]
-pdoc = "^7.3.1"
+pdoc3 = "^0.10.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0", "setuptools>=54"]

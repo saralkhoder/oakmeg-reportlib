@@ -13,4 +13,4 @@ fi
 printf '\n-->> Generating documentation\n\n'
 
 # Build doc
- pdoc --html reportlib
+ pdoc --html --force reportlib

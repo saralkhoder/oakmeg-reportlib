@@ -1,3 +1,4 @@
+"""Module for downloading Atom data"""
 import io
 import re
 import yaml
@@ -8,13 +9,10 @@ import sqlalchemy as sa
 
 class DbConnection:
     """
-    Creates and maintains a connection to the Atom RDS database to run queries
-
-    Args:
-        secret_yaml_path (str): Relative path of the secret.yaml file TODO: add template in doc/readme
+    Creates and maintains a connection to the Atom RDS database to run PostgreSQL queries
     """
 
-    def __init__(self, secret_yaml_path):
+    def __init__(self, secret_yaml_path: str):
         with open(secret_yaml_path) as file:
             secrets = yaml.load(file, Loader=yaml.FullLoader)
             dbuser = secrets["rds"]["dbuser"]
@@ -30,7 +28,7 @@ class DbConnection:
             self.db_engine = db_engine
             print("Connected to database")
 
-    def query(self, querystring):
+    def query(self, querystring: str) -> pd.DataFrame:
         """
         Run query on the Atom RDS
 
@@ -54,15 +52,15 @@ class Data:
     """
     Loads and hosts common ATOM data like aois, dashboard data (dash), impressions (mop), etc.
 
-    Args:
-        secret_yaml_path (str): Relative path of the secret.yaml file
-        campaign_id (str): Currently supports NTXX and OTXX schemes
-
-    Returns:
-        A pandas DataFrame with the query result
+    Attributes:
+        aois (DataFrame): Campaign aois
+        dash (DataFrame): Enriched dash table data
+        mop (DataFrame): Enriched mop table data
+        lifesight (DataFrame): Lifesight data for MAIDs listed in mop
+        survey (DataFrame): Question answers if campaign is a survey
     """
 
-    def __init__(self, secret_yaml_path, campaign_id):
+    def __init__(self, secret_yaml_path: str, campaign_id: str):
         if "NT" in campaign_id:
             self.project_id = "Nutmeg - PRO-12767"
         elif "OT" in campaign_id:
@@ -78,8 +76,10 @@ class Data:
 
         self.db = DbConnection(secret_yaml_path)
 
-    # Get aoi filter for campaign
-    def _get_aois_filter(self):
+    def _get_aois_filter(self) -> dict:
+        """
+        Get aoi filter for campaign
+        """
         data = self.db.query(
             f"""
             select campaign from aois
@@ -92,12 +92,17 @@ class Data:
         else:
             return {"campaign": [data["campaign"][0]]}
 
-    # Get survey filter for campaign TODO: make more robust to handle bad messaging format
-    def _get_survey_filter(self):
+    def _get_survey_filter(self) -> dict:
+        """
+        Get survey filter for campaign
+        TODO: make more robust to handle bad messaging format
+        """
         return {"messaging": [self.campaign_id]}
 
-    # Get dash_table filter for campaign
-    def _get_dash_filter(self):
+    def _get_dash_filter(self) -> dict:
+        """
+        Get dash_table filter for campaign
+        """
         if "NT" in self.campaign_id:
             project_id = "Nutmeg - PRO-12767"
         elif "OT" in self.campaign_id:
@@ -119,8 +124,10 @@ class Data:
                 "campaign_name": [data["campaign_name"][0]],
             }
 
-    # Get mop_table filter for campaign
-    def _get_mop_filter(self):
+    def _get_mop_filter(self) -> dict:
+        """
+        Get mop_table filter for campaign
+        """
         data = self.db.query(
             f"""
             select adtype, campaign from mop_table
@@ -138,17 +145,21 @@ class Data:
         else:
             return None
 
-    # Extract message in <message>-<geohash> like string
     @staticmethod
-    def extract_message(string):
+    def _extract_message(string: str) -> str:
+        """
+        Extract message in <message>-<geohash> like string
+        """
         match = re.match("(.*)-.*", string)
         if match:
             return match[1]
         else:
             return None
 
-    # Extract aoi name in <message>-<geohash> like string
-    def extract_aoi(self, string):
+    def _extract_aoi(self, string: str) -> str:
+        """
+        Extract aoi name in <message>-<geohash> like string
+        """
         match = re.match(".*-(.*)", string)
         if match:
             return match[1]
@@ -157,8 +168,10 @@ class Data:
         else:
             return None
 
-    # Load Areas of Interest
-    def load_aois(self):
+    def load_aois(self) -> None:
+        """
+        Load Areas of Interest
+        """
         aois_filter = self._get_aois_filter()
         if filter:
             aois = self.db.query(
@@ -175,8 +188,10 @@ class Data:
         else:
             print(f"x no AOI")
 
-    # Load impressions summary table
-    def load_dash(self):
+    def load_dash(self) -> None:
+        """
+        Load impressions summary table
+        """
         dash_filter = self._get_dash_filter()
 
         if dash_filter:
@@ -192,21 +207,23 @@ class Data:
             dash["date_served"] = pd.to_datetime(dash["date_served"])
 
             if not self.aois.empty:
-                dash["geohash"] = dash["message"].apply(lambda m: self.extract_aoi(m))
+                dash["geohash"] = dash["message"].apply(lambda m: self._extract_aoi(m))
                 dash["aoi"] = dash["geohash"].replace(
                     dict(zip(self.aois["message"].tolist(), self.aois["name"].tolist()))
                 )
             else:
                 print("! could not enrich dash data with aoi")
-            dash["message"] = dash["message"].apply(self.extract_message)
+            dash["message"] = dash["message"].apply(self._extract_message)
 
             print(f"- {len(dash)} rows found in public.dash_table")
             self.dash = dash
         else:
             print(f"x no dash data")
 
-    # Load full impressions table
-    def load_mop(self):
+    def load_mop(self) -> None:
+        """
+        Load full impressions table
+        """
         mop_filter = self._get_mop_filter()
 
         if mop_filter:
@@ -241,11 +258,11 @@ class Data:
             mop["longitude"] = pd.to_numeric(mop["longitude"])
 
             if not self.aois.empty:
-                mop["geohash"] = mop["message"].apply(lambda m: self.extract_aoi(m))
+                mop["geohash"] = mop["message"].apply(lambda m: self._extract_aoi(m))
                 mop["aoi"] = mop["geohash"].replace(
                     dict(zip(self.aois["message"].tolist(), self.aois["name"].tolist()))
                 )
-            mop["message"] = mop["message"].apply(self.extract_message)
+            mop["message"] = mop["message"].apply(self._extract_message)
 
             print(f"- {len(mop)} impressions found in public.mop_table")
             self.mop = mop.drop(columns=["message.1"])
@@ -253,10 +270,10 @@ class Data:
         else:
             print(f"x no dash data")
 
-    # Load Patterns of Life data from lifesight
-    def load_lifesight(
-        self,
-    ):
+    def load_lifesight(self) -> None:
+        """
+        Load Patterns of Life data from lifesight
+        """
         # TODO: manual_maids=None (add option to provide MAIDs manually)
         mop_filter = self._get_mop_filter()
 
@@ -280,8 +297,10 @@ class Data:
         else:
             print("x need maids from mop to load lifesight data")
 
-    # Load survey results from new_survey_data
-    def load_survey(self):
+    def load_survey(self) -> None:
+        """
+        Load survey results from new_survey_data
+        """
         survey_filter = self._get_survey_filter()
 
         survey = self.db.query(
@@ -297,7 +316,11 @@ class Data:
         else:
             print(f"x no survey data")
 
-    def load_all(self):
+    def load_all(self) -> None:
+        """
+        Try to load aois, dash, mop, lifesight and surve data
+        ! Warning ! If the campaign has no data in mop table query may take hours to find out
+        """
         print("Loading " + self.campaign_id + " data from AWS...")
 
         self.load_aois()
@@ -309,9 +332,11 @@ class Data:
         print("Done!")
 
 
-# Return a where clause as a string from a dictionary of lists
-# The clause applies a strict AND to all parameters
 def _where_clause(dict_filters):
+    """
+    Return a where clause as a string from a dictionary of lists
+    The clause applies a strict AND to all parameters
+    """
     first = True
     sub_sql_where = "where "
     for var, val in dict_filters.items():
