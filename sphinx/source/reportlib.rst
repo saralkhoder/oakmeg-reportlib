@@ -4,10 +4,18 @@ reportlib package
 Submodules
 ----------
 
-reportlib.data module
+reportlib.datamodule module
+---------------------------
+
+.. automodule:: reportlib.datamodule
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+reportlib.maps module
 ---------------------
 
-.. automodule:: reportlib.data
+.. automodule:: reportlib.maps
    :members:
    :undoc-members:
    :show-inheritance:
