@@ -54,8 +54,9 @@ class Data:
 
     Attributes:
         aois (DataFrame): Campaign aois
-        dash (DataFrame): Enriched dash table data
-        mop (DataFrame): Enriched mop table data
+        dash (DataFrame): Enriched dash table data (impressions by day and asset)
+        cm360 (DataFrame): Enriched CM360 offline report data (impressions by day)
+        mop (DataFrame): Enriched mop table data (individual impressions)
         lifesight (DataFrame): Lifesight data for MAIDs listed in mop
         survey (DataFrame): Question answers if campaign is a survey
     """
@@ -70,6 +71,7 @@ class Data:
         self.campaign_id = campaign_id
         self.aois = pd.DataFrame()
         self.dash = pd.DataFrame()
+        self.cm360 = pd.DataFrame()
         self.mop = pd.DataFrame()
         self.lifesight = pd.DataFrame()
         self.survey = pd.DataFrame()
@@ -197,7 +199,8 @@ class Data:
         if dash_filter:
             dash = self.db.query(
                 f"""
-                select project, adtype, impressions, clicks, date_served, message, assetid
+                select project, adtype, impressions, clicks, date_served, message, assetid, ad_language,\
+country_code, format
                 from dash_table
                 {_where_clause(dash_filter)} 
                 """
@@ -219,6 +222,44 @@ class Data:
             self.dash = dash
         else:
             print(f"x no dash data")
+
+    def load_cm360(self, path: str) -> pd.DataFrame:
+        """
+        Load impressions by date from CM360 report file
+        Report must have at least
+        - dimensions: Date, Placement
+        - metrics: Impressions, Clicks
+        """
+        dcm = pd.read_csv(path, skiprows=11)[:-1][
+            ["Placement", "Date", "Impressions", "Clicks"]
+        ]
+        dcm.columns = ["placement", "date_served", "impressions", "clicks"]
+
+        dcm["date_served"] = pd.to_datetime(dcm["date_served"])
+
+        expanded = dcm["placement"].str.split("|", expand=True)
+        expanded.columns = [
+            "project",
+            "assetid",
+            "adtype",
+            "message",
+            "country_code",
+            "ad_language",
+            "format",
+        ]
+
+        msg = expanded["message"].str.split("-", expand=True)
+        msg.columns = ["message", "geohash"]
+
+        if not self.aois.empty:
+            msg["aoi"] = msg["geohash"].replace(
+                dict(zip(self.aois["message"].tolist(), self.aois["name"].tolist()))
+            )
+
+        self.cm360 = pd.concat(
+            [dcm.drop(columns=["placement"]), expanded.drop(columns=["message"]), msg],
+            axis=1,
+        )
 
     def load_mop(self) -> None:
         """
