@@ -1,6 +1,7 @@
 """Module for downloading Atom data"""
 import io
 import re
+
 import yaml
 import urllib.parse
 import pandas as pd
@@ -31,6 +32,11 @@ class DbConnection:
     def query(self, querystring: str) -> pd.DataFrame:
         """
         Run query on the Atom RDS
+
+        Example:
+        ``
+        query(\"\"\"select * from dash_table limit 1\"\"\")
+        ``
 
         Args:
             querystring (str): A Postgresql query string
