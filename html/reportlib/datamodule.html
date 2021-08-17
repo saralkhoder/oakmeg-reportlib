@@ -30,6 +30,7 @@
 <pre><code class="python">&#34;&#34;&#34;Module for downloading Atom data&#34;&#34;&#34;
 import io
 import re
+
 import yaml
 import urllib.parse
 import pandas as pd
@@ -61,6 +62,11 @@ class DbConnection:
         &#34;&#34;&#34;
         Run query on the Atom RDS
 
+        Example:
+        ``
+        query(\&#34;\&#34;\&#34;select * from dash_table limit 1\&#34;\&#34;\&#34;)
+        ``
+
         Args:
             querystring (str): A Postgresql query string
 
@@ -83,8 +89,9 @@ class Data:
 
     Attributes:
         aois (DataFrame): Campaign aois
-        dash (DataFrame): Enriched dash table data
-        mop (DataFrame): Enriched mop table data
+        dash (DataFrame): Enriched dash table data (impressions by day and asset)
+        cm360 (DataFrame): Enriched CM360 offline report data (impressions by day)
+        mop (DataFrame): Enriched mop table data (individual impressions)
         lifesight (DataFrame): Lifesight data for MAIDs listed in mop
         survey (DataFrame): Question answers if campaign is a survey
     &#34;&#34;&#34;
@@ -99,6 +106,7 @@ class Data:
         self.campaign_id = campaign_id
         self.aois = pd.DataFrame()
         self.dash = pd.DataFrame()
+        self.cm360 = pd.DataFrame()
         self.mop = pd.DataFrame()
         self.lifesight = pd.DataFrame()
         self.survey = pd.DataFrame()
@@ -226,7 +234,8 @@ class Data:
         if dash_filter:
             dash = self.db.query(
                 f&#34;&#34;&#34;
-                select project, adtype, impressions, clicks, date_served, message, assetid
+                select project, adtype, impressions, clicks, date_served, message, assetid, ad_language,\
+country_code, format
                 from dash_table
                 {_where_clause(dash_filter)} 
                 &#34;&#34;&#34;
@@ -248,6 +257,44 @@ class Data:
             self.dash = dash
         else:
             print(f&#34;x no dash data&#34;)
+
+    def load_cm360(self, path: str) -&gt; pd.DataFrame:
+        &#34;&#34;&#34;
+        Load impressions by date from CM360 report file
+        Report must have at least
+        - dimensions: Date, Placement
+        - metrics: Impressions, Clicks
+        &#34;&#34;&#34;
+        dcm = pd.read_csv(path, skiprows=11)[:-1][
+            [&#34;Placement&#34;, &#34;Date&#34;, &#34;Impressions&#34;, &#34;Clicks&#34;]
+        ]
+        dcm.columns = [&#34;placement&#34;, &#34;date_served&#34;, &#34;impressions&#34;, &#34;clicks&#34;]
+
+        dcm[&#34;date_served&#34;] = pd.to_datetime(dcm[&#34;date_served&#34;])
+
+        expanded = dcm[&#34;placement&#34;].str.split(&#34;|&#34;, expand=True)
+        expanded.columns = [
+            &#34;project&#34;,
+            &#34;assetid&#34;,
+            &#34;adtype&#34;,
+            &#34;message&#34;,
+            &#34;country_code&#34;,
+            &#34;ad_language&#34;,
+            &#34;format&#34;,
+        ]
+
+        msg = expanded[&#34;message&#34;].str.split(&#34;-&#34;, expand=True)
+        msg.columns = [&#34;message&#34;, &#34;geohash&#34;]
+
+        if not self.aois.empty:
+            msg[&#34;aoi&#34;] = msg[&#34;geohash&#34;].replace(
+                dict(zip(self.aois[&#34;message&#34;].tolist(), self.aois[&#34;name&#34;].tolist()))
+            )
+
+        self.cm360 = pd.concat(
+            [dcm.drop(columns=[&#34;placement&#34;]), expanded.drop(columns=[&#34;message&#34;]), msg],
+            axis=1,
+        )
 
     def load_mop(self) -&gt; None:
         &#34;&#34;&#34;
@@ -401,9 +448,11 @@ def _where_clause(dict_filters):
 <dt><strong><code>aois</code></strong> :&ensp;<code>DataFrame</code></dt>
 <dd>Campaign aois</dd>
 <dt><strong><code>dash</code></strong> :&ensp;<code>DataFrame</code></dt>
-<dd>Enriched dash table data</dd>
+<dd>Enriched dash table data (impressions by day and asset)</dd>
+<dt><strong><code>cm360</code></strong> :&ensp;<code>DataFrame</code></dt>
+<dd>Enriched CM360 offline report data (impressions by day)</dd>
 <dt><strong><code>mop</code></strong> :&ensp;<code>DataFrame</code></dt>
-<dd>Enriched mop table data</dd>
+<dd>Enriched mop table data (individual impressions)</dd>
 <dt><strong><code>lifesight</code></strong> :&ensp;<code>DataFrame</code></dt>
 <dd>Lifesight data for MAIDs listed in mop</dd>
 <dt><strong><code>survey</code></strong> :&ensp;<code>DataFrame</code></dt>
@@ -419,8 +468,9 @@ def _where_clause(dict_filters):
 
     Attributes:
         aois (DataFrame): Campaign aois
-        dash (DataFrame): Enriched dash table data
-        mop (DataFrame): Enriched mop table data
+        dash (DataFrame): Enriched dash table data (impressions by day and asset)
+        cm360 (DataFrame): Enriched CM360 offline report data (impressions by day)
+        mop (DataFrame): Enriched mop table data (individual impressions)
         lifesight (DataFrame): Lifesight data for MAIDs listed in mop
         survey (DataFrame): Question answers if campaign is a survey
     &#34;&#34;&#34;
@@ -435,6 +485,7 @@ def _where_clause(dict_filters):
         self.campaign_id = campaign_id
         self.aois = pd.DataFrame()
         self.dash = pd.DataFrame()
+        self.cm360 = pd.DataFrame()
         self.mop = pd.DataFrame()
         self.lifesight = pd.DataFrame()
         self.survey = pd.DataFrame()
@@ -562,7 +613,8 @@ def _where_clause(dict_filters):
         if dash_filter:
             dash = self.db.query(
                 f&#34;&#34;&#34;
-                select project, adtype, impressions, clicks, date_served, message, assetid
+                select project, adtype, impressions, clicks, date_served, message, assetid, ad_language,\
+country_code, format
                 from dash_table
                 {_where_clause(dash_filter)} 
                 &#34;&#34;&#34;
@@ -584,6 +636,44 @@ def _where_clause(dict_filters):
             self.dash = dash
         else:
             print(f&#34;x no dash data&#34;)
+
+    def load_cm360(self, path: str) -&gt; pd.DataFrame:
+        &#34;&#34;&#34;
+        Load impressions by date from CM360 report file
+        Report must have at least
+        - dimensions: Date, Placement
+        - metrics: Impressions, Clicks
+        &#34;&#34;&#34;
+        dcm = pd.read_csv(path, skiprows=11)[:-1][
+            [&#34;Placement&#34;, &#34;Date&#34;, &#34;Impressions&#34;, &#34;Clicks&#34;]
+        ]
+        dcm.columns = [&#34;placement&#34;, &#34;date_served&#34;, &#34;impressions&#34;, &#34;clicks&#34;]
+
+        dcm[&#34;date_served&#34;] = pd.to_datetime(dcm[&#34;date_served&#34;])
+
+        expanded = dcm[&#34;placement&#34;].str.split(&#34;|&#34;, expand=True)
+        expanded.columns = [
+            &#34;project&#34;,
+            &#34;assetid&#34;,
+            &#34;adtype&#34;,
+            &#34;message&#34;,
+            &#34;country_code&#34;,
+            &#34;ad_language&#34;,
+            &#34;format&#34;,
+        ]
+
+        msg = expanded[&#34;message&#34;].str.split(&#34;-&#34;, expand=True)
+        msg.columns = [&#34;message&#34;, &#34;geohash&#34;]
+
+        if not self.aois.empty:
+            msg[&#34;aoi&#34;] = msg[&#34;geohash&#34;].replace(
+                dict(zip(self.aois[&#34;message&#34;].tolist(), self.aois[&#34;name&#34;].tolist()))
+            )
+
+        self.cm360 = pd.concat(
+            [dcm.drop(columns=[&#34;placement&#34;]), expanded.drop(columns=[&#34;message&#34;]), msg],
+            axis=1,
+        )
 
     def load_mop(self) -&gt; None:
         &#34;&#34;&#34;
@@ -754,6 +844,57 @@ def _where_clause(dict_filters):
         print(f&#34;x no AOI&#34;)</code></pre>
 </details>
 </dd>
+<dt id="reportlib.datamodule.Data.load_cm360"><code class="name flex">
+<span>def <span class="ident">load_cm360</span></span>(<span>self, path: str) ‑> pandas.core.frame.DataFrame</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Load impressions by date from CM360 report file
+Report must have at least
+- dimensions: Date, Placement
+- metrics: Impressions, Clicks</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def load_cm360(self, path: str) -&gt; pd.DataFrame:
+    &#34;&#34;&#34;
+    Load impressions by date from CM360 report file
+    Report must have at least
+    - dimensions: Date, Placement
+    - metrics: Impressions, Clicks
+    &#34;&#34;&#34;
+    dcm = pd.read_csv(path, skiprows=11)[:-1][
+        [&#34;Placement&#34;, &#34;Date&#34;, &#34;Impressions&#34;, &#34;Clicks&#34;]
+    ]
+    dcm.columns = [&#34;placement&#34;, &#34;date_served&#34;, &#34;impressions&#34;, &#34;clicks&#34;]
+
+    dcm[&#34;date_served&#34;] = pd.to_datetime(dcm[&#34;date_served&#34;])
+
+    expanded = dcm[&#34;placement&#34;].str.split(&#34;|&#34;, expand=True)
+    expanded.columns = [
+        &#34;project&#34;,
+        &#34;assetid&#34;,
+        &#34;adtype&#34;,
+        &#34;message&#34;,
+        &#34;country_code&#34;,
+        &#34;ad_language&#34;,
+        &#34;format&#34;,
+    ]
+
+    msg = expanded[&#34;message&#34;].str.split(&#34;-&#34;, expand=True)
+    msg.columns = [&#34;message&#34;, &#34;geohash&#34;]
+
+    if not self.aois.empty:
+        msg[&#34;aoi&#34;] = msg[&#34;geohash&#34;].replace(
+            dict(zip(self.aois[&#34;message&#34;].tolist(), self.aois[&#34;name&#34;].tolist()))
+        )
+
+    self.cm360 = pd.concat(
+        [dcm.drop(columns=[&#34;placement&#34;]), expanded.drop(columns=[&#34;message&#34;]), msg],
+        axis=1,
+    )</code></pre>
+</details>
+</dd>
 <dt id="reportlib.datamodule.Data.load_dash"><code class="name flex">
 <span>def <span class="ident">load_dash</span></span>(<span>self) ‑> None</span>
 </code></dt>
@@ -763,37 +904,38 @@ def _where_clause(dict_filters):
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def load_dash(self) -&gt; None:
-    &#34;&#34;&#34;
-    Load impressions summary table
-    &#34;&#34;&#34;
-    dash_filter = self._get_dash_filter()
+<pre><code class="python">    def load_dash(self) -&gt; None:
+        &#34;&#34;&#34;
+        Load impressions summary table
+        &#34;&#34;&#34;
+        dash_filter = self._get_dash_filter()
 
-    if dash_filter:
-        dash = self.db.query(
-            f&#34;&#34;&#34;
-            select project, adtype, impressions, clicks, date_served, message, assetid
-            from dash_table
-            {_where_clause(dash_filter)} 
-            &#34;&#34;&#34;
-        )
-
-        # Format dates
-        dash[&#34;date_served&#34;] = pd.to_datetime(dash[&#34;date_served&#34;])
-
-        if not self.aois.empty:
-            dash[&#34;geohash&#34;] = dash[&#34;message&#34;].apply(lambda m: self._extract_aoi(m))
-            dash[&#34;aoi&#34;] = dash[&#34;geohash&#34;].replace(
-                dict(zip(self.aois[&#34;message&#34;].tolist(), self.aois[&#34;name&#34;].tolist()))
+        if dash_filter:
+            dash = self.db.query(
+                f&#34;&#34;&#34;
+                select project, adtype, impressions, clicks, date_served, message, assetid, ad_language,\
+country_code, format
+                from dash_table
+                {_where_clause(dash_filter)} 
+                &#34;&#34;&#34;
             )
-        else:
-            print(&#34;! could not enrich dash data with aoi&#34;)
-        dash[&#34;message&#34;] = dash[&#34;message&#34;].apply(self._extract_message)
 
-        print(f&#34;- {len(dash)} rows found in public.dash_table&#34;)
-        self.dash = dash
-    else:
-        print(f&#34;x no dash data&#34;)</code></pre>
+            # Format dates
+            dash[&#34;date_served&#34;] = pd.to_datetime(dash[&#34;date_served&#34;])
+
+            if not self.aois.empty:
+                dash[&#34;geohash&#34;] = dash[&#34;message&#34;].apply(lambda m: self._extract_aoi(m))
+                dash[&#34;aoi&#34;] = dash[&#34;geohash&#34;].replace(
+                    dict(zip(self.aois[&#34;message&#34;].tolist(), self.aois[&#34;name&#34;].tolist()))
+                )
+            else:
+                print(&#34;! could not enrich dash data with aoi&#34;)
+            dash[&#34;message&#34;] = dash[&#34;message&#34;].apply(self._extract_message)
+
+            print(f&#34;- {len(dash)} rows found in public.dash_table&#34;)
+            self.dash = dash
+        else:
+            print(f&#34;x no dash data&#34;)</code></pre>
 </details>
 </dd>
 <dt id="reportlib.datamodule.Data.load_lifesight"><code class="name flex">
@@ -959,6 +1101,11 @@ def _where_clause(dict_filters):
         &#34;&#34;&#34;
         Run query on the Atom RDS
 
+        Example:
+        ``
+        query(\&#34;\&#34;\&#34;select * from dash_table limit 1\&#34;\&#34;\&#34;)
+        ``
+
         Args:
             querystring (str): A Postgresql query string
 
@@ -981,6 +1128,8 @@ def _where_clause(dict_filters):
 </code></dt>
 <dd>
 <div class="desc"><p>Run query on the Atom RDS</p>
+<p>Example:
+<code>query("""select * from dash_table limit 1""")</code></p>
 <h2 id="args">Args</h2>
 <dl>
 <dt><strong><code>querystring</code></strong> :&ensp;<code>str</code></dt>
@@ -995,6 +1144,11 @@ def _where_clause(dict_filters):
 <pre><code class="python">def query(self, querystring: str) -&gt; pd.DataFrame:
     &#34;&#34;&#34;
     Run query on the Atom RDS
+
+    Example:
+    ``
+    query(\&#34;\&#34;\&#34;select * from dash_table limit 1\&#34;\&#34;\&#34;)
+    ``
 
     Args:
         querystring (str): A Postgresql query string
@@ -1035,6 +1189,7 @@ def _where_clause(dict_filters):
 <ul class="two-column">
 <li><code><a title="reportlib.datamodule.Data.load_all" href="#reportlib.datamodule.Data.load_all">load_all</a></code></li>
 <li><code><a title="reportlib.datamodule.Data.load_aois" href="#reportlib.datamodule.Data.load_aois">load_aois</a></code></li>
+<li><code><a title="reportlib.datamodule.Data.load_cm360" href="#reportlib.datamodule.Data.load_cm360">load_cm360</a></code></li>
 <li><code><a title="reportlib.datamodule.Data.load_dash" href="#reportlib.datamodule.Data.load_dash">load_dash</a></code></li>
 <li><code><a title="reportlib.datamodule.Data.load_lifesight" href="#reportlib.datamodule.Data.load_lifesight">load_lifesight</a></code></li>
 <li><code><a title="reportlib.datamodule.Data.load_mop" href="#reportlib.datamodule.Data.load_mop">load_mop</a></code></li>

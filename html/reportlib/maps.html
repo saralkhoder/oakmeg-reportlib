@@ -29,12 +29,18 @@
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Module for creating Atom maps&#34;&#34;&#34;
 import io
-import pandas as pd
-from enum import Enum
 from pathlib import Path
+
+from enum import Enum
+import pandas as pd
+import numpy as np
+import pygeohash
 from PIL import Image
 import folium
 from folium import plugins
+from branca import colormap as cm
+
+from reportlib.utils import Colors
 
 
 class Tile(Enum):
@@ -45,20 +51,8 @@ access_token=pk.eyJ1IjoiZ2FzcGFyZGZldXZyYXkiLCJhIjoiY2p2YzdhMHZzMWZyMzN5bWo3dTUw
 access_token=pk.eyJ1IjoiZ2FzcGFyZGZldXZyYXkiLCJhIjoiY2p2YzdhMHZzMWZyMzN5bWo3dTUwY2UxcSJ9.MwgCkS-8xqvM9wjQI-vjgw&#34;
 
 
-class Cmap(Enum):
-    QUALITATIVE = [
-        &#34;#1f77b4&#34;,
-        &#34;#2ca02c&#34;,
-        &#34;#ff7f0e&#34;,
-        &#34;#d62728&#34;,
-        &#34;#9467bd&#34;,
-        &#34;#8c564b&#34;,
-        &#34;#e377c2&#34;,
-    ]
-
-
-class Palette(Enum):
-    AOI = &#34;blue&#34;
+class _Palette(Enum):
+    AOI = Colors.BLUE.value
 
 
 class AtomMap:
@@ -69,6 +63,7 @@ class AtomMap:
     Returns:
         A pandas DataFrame with the query result
     &#34;&#34;&#34;
+
     def __init__(self, tile: Tile):
         self.fmap = create_map(tile)
         self.layers = []
@@ -85,6 +80,7 @@ class AtomMap:
         Returns:
             self, for chaining
         &#34;&#34;&#34;
+
         def update_bound(prop, func):
             if self.bounds[prop]:
                 self.bounds[prop] = [
@@ -99,10 +95,12 @@ class AtomMap:
 
     def add_aois(self, aois: pd.DataFrame) -&gt; None:
         &#34;&#34;&#34;
-        Add a layer with AOIs to display
+        Add a layer with AOIs
 
         Args:
             aois (DataFrame): The aois to display on the map
+        Returns:
+            self, for chaining
         &#34;&#34;&#34;
         for index, aoi in aois.iterrows():
             popup = folium.Popup(
@@ -115,49 +113,118 @@ class AtomMap:
                 [aoi[&#34;latitude&#34;], aoi[&#34;longitude&#34;]],
                 radius=aoi[&#34;radius_km&#34;] * 1000,
                 popup=popup,
-                fill_color=Palette.AOI.value,
-                color=Palette.AOI.value,
+                fill_color=_Palette.AOI.value,
+                color=_Palette.AOI.value,
                 opacity=0.3,
             ).add_to(self.fmap)
 
         self._update_bounds(aois[&#34;latitude&#34;], aois[&#34;longitude&#34;])
         return self  # for serialisation
 
+    def add_aois_perf(
+        self,
+        df,
+    ):
+        &#34;&#34;&#34;
+        Add a layer showing performance per AOI, color represents clickthrough rate and size impressions volume
+
+        Args:
+            df (DataFrame): The performance data, must have a geohash column to locate the aois
+        Returns:
+            self, for chaining
+        &#34;&#34;&#34;
+        # Group and compute performance
+        perf = df.groupby(&#34;geohash&#34;, as_index=False).agg(
+            {&#34;impressions&#34;: &#34;sum&#34;, &#34;clicks&#34;: &#34;sum&#34;, &#34;geohash&#34;: &#34;first&#34;}
+        )
+        perf[&#34;ctr&#34;] = perf[&#34;clicks&#34;] / perf[&#34;impressions&#34;]
+        perf[&#34;ctr_perc&#34;] = perf[&#34;ctr&#34;] * 100
+
+        minctr = perf[&#34;ctr_perc&#34;].min()
+        maxctr = perf[&#34;ctr_perc&#34;].max()
+
+        # Print ctr and impressions range
+        print(&#34;ctr:&#34;, minctr, &#34;-&#34;, maxctr)
+        print(&#34;impressions:&#34;, perf[&#34;impressions&#34;].min(), &#34;-&#34;, perf[&#34;impressions&#34;].max())
+
+        def linmap(v, mn, mx, mn_to=0, mx_to=1):
+            return (v - mn) / (mx - mn) * (mx_to - mn_to) + mn_to
+
+        colormap = cm.LinearColormap(
+            colors=[&#34;#F5A331&#34;, &#34;#F5E214&#34;, &#34;#35CC3F&#34;],
+            index=[minctr - 0.15, (minctr - 0.15 + maxctr) / 2, maxctr],
+            vmin=minctr - 0.15,
+            vmax=maxctr,
+        )
+
+        # Creates the marker for an AOI
+        def marker(geohash, size, intensity):
+            return folium.CircleMarker(
+                pygeohash.decode(geohash),
+                radius=size,
+                # color=matplotlib.colors.rgb2hex(colormap(intensity)),
+                # fill_color=matplotlib.colors.rgb2hex(colormap(intensity)),
+                color=colormap(intensity),
+                fill_color=colormap(intensity),
+                opacity=1,
+                fill_opacity=0.4,
+            )
+
+        for _, aoi in perf.iterrows():
+            size = linmap(
+                aoi[&#34;impressions&#34;],
+                perf[&#34;impressions&#34;].min(),
+                perf[&#34;impressions&#34;].max(),
+                mn_to=10,
+                mx_to=25,
+            )
+            intensity = aoi[&#34;ctr_perc&#34;]
+            self.fmap.add_child(marker(aoi[&#34;geohash&#34;], size, intensity))
+
+        # Update map boundaries
+        aoi_centroids = np.array(
+            list(perf[&#34;geohash&#34;].apply(lambda g: pygeohash.decode(g)))
+        )
+        self._update_bounds(aoi_centroids[:, 0], aoi_centroids[:, 1])
+        return self
+
     def show(self) -&gt; object:
         &#34;&#34;&#34;
-        Show AOIs layer on the map
+        Display the map
 
         Returns:
-            self, for displaying / chaining
+            self, for chaining
         &#34;&#34;&#34;
-        print(&#34;todo: compute bounds and feature groups&#34;)
-        print(self.bounds)
         self.fmap.fit_bounds([self.bounds[&#34;sw&#34;], self.bounds[&#34;ne&#34;]])
+        return self.fmap
+
+    def save(self, to: str) -&gt; object:
+        &#34;&#34;&#34;
+        Save the map in a generated folder
+
+        Args:
+            to (str): the new file name, without extension
+
+        Returns:
+            self, for chaining
+        &#34;&#34;&#34;
+        _save_map(self.fmap, to=to)
         return self.fmap
 
 
 def create_map(tile: Tile) -&gt; folium.Map:
-    &#34;&#34;&#34;
-    Create an empty folium map
-
-    Args:
-        tile (Tile): the base tile to use
-
-    Returns:
-        The created folium map
-    &#34;&#34;&#34;
     return folium.Map(tiles=None).add_child(
         folium.TileLayer(tile.value, name=&#34;base_map&#34;, attr=&#34;atom&#34;)
     )
 
 
-def save_map(fmap: folium.Map, to: str) -&gt; None:
+def _save_map(fmap: folium.Map, to: str) -&gt; None:
     &#34;&#34;&#34;
     Save the map in a generated folder. Note that the process takes ~5 seconds
 
     Args:
         fmap (folium.Map): the map to save
-        to (str): the new file name, without extension
+        to (str): *optional*, the new file name, without extension
 
     Returns:
         The created folium map
@@ -179,66 +246,15 @@ def save_map(fmap: folium.Map, to: str) -&gt; None:
 <span>def <span class="ident">create_map</span></span>(<span>tile: <a title="reportlib.maps.Tile" href="#reportlib.maps.Tile">Tile</a>) ‑> folium.folium.Map</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Create an empty folium map</p>
-<h2 id="args">Args</h2>
-<dl>
-<dt><strong><code>tile</code></strong> :&ensp;<code><a title="reportlib.maps.Tile" href="#reportlib.maps.Tile">Tile</a></code></dt>
-<dd>the base tile to use</dd>
-</dl>
-<h2 id="returns">Returns</h2>
-<p>The created folium map</p></div>
+<div class="desc"></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def create_map(tile: Tile) -&gt; folium.Map:
-    &#34;&#34;&#34;
-    Create an empty folium map
-
-    Args:
-        tile (Tile): the base tile to use
-
-    Returns:
-        The created folium map
-    &#34;&#34;&#34;
     return folium.Map(tiles=None).add_child(
         folium.TileLayer(tile.value, name=&#34;base_map&#34;, attr=&#34;atom&#34;)
     )</code></pre>
-</details>
-</dd>
-<dt id="reportlib.maps.save_map"><code class="name flex">
-<span>def <span class="ident">save_map</span></span>(<span>fmap: folium.folium.Map, to: str) ‑> None</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Save the map in a generated folder. Note that the process takes ~5 seconds</p>
-<h2 id="args">Args</h2>
-<dl>
-<dt><strong><code>fmap</code></strong> :&ensp;<code>folium.Map</code></dt>
-<dd>the map to save</dd>
-<dt><strong><code>to</code></strong> :&ensp;<code>str</code></dt>
-<dd>the new file name, without extension</dd>
-</dl>
-<h2 id="returns">Returns</h2>
-<p>The created folium map</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def save_map(fmap: folium.Map, to: str) -&gt; None:
-    &#34;&#34;&#34;
-    Save the map in a generated folder. Note that the process takes ~5 seconds
-
-    Args:
-        fmap (folium.Map): the map to save
-        to (str): the new file name, without extension
-
-    Returns:
-        The created folium map
-    &#34;&#34;&#34;
-    Path(&#34;generated&#34;).mkdir(parents=True, exist_ok=True)
-    img_data = fmap._to_png(5)
-    img = Image.open(io.BytesIO(img_data))
-    img.save(&#34;generated/&#34; + to + &#34;.png&#34;)</code></pre>
 </details>
 </dd>
 </dl>
@@ -267,6 +283,7 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
     Returns:
         A pandas DataFrame with the query result
     &#34;&#34;&#34;
+
     def __init__(self, tile: Tile):
         self.fmap = create_map(tile)
         self.layers = []
@@ -283,6 +300,7 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
         Returns:
             self, for chaining
         &#34;&#34;&#34;
+
         def update_bound(prop, func):
             if self.bounds[prop]:
                 self.bounds[prop] = [
@@ -297,10 +315,12 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
 
     def add_aois(self, aois: pd.DataFrame) -&gt; None:
         &#34;&#34;&#34;
-        Add a layer with AOIs to display
+        Add a layer with AOIs
 
         Args:
             aois (DataFrame): The aois to display on the map
+        Returns:
+            self, for chaining
         &#34;&#34;&#34;
         for index, aoi in aois.iterrows():
             popup = folium.Popup(
@@ -313,24 +333,102 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
                 [aoi[&#34;latitude&#34;], aoi[&#34;longitude&#34;]],
                 radius=aoi[&#34;radius_km&#34;] * 1000,
                 popup=popup,
-                fill_color=Palette.AOI.value,
-                color=Palette.AOI.value,
+                fill_color=_Palette.AOI.value,
+                color=_Palette.AOI.value,
                 opacity=0.3,
             ).add_to(self.fmap)
 
         self._update_bounds(aois[&#34;latitude&#34;], aois[&#34;longitude&#34;])
         return self  # for serialisation
 
+    def add_aois_perf(
+        self,
+        df,
+    ):
+        &#34;&#34;&#34;
+        Add a layer showing performance per AOI, color represents clickthrough rate and size impressions volume
+
+        Args:
+            df (DataFrame): The performance data, must have a geohash column to locate the aois
+        Returns:
+            self, for chaining
+        &#34;&#34;&#34;
+        # Group and compute performance
+        perf = df.groupby(&#34;geohash&#34;, as_index=False).agg(
+            {&#34;impressions&#34;: &#34;sum&#34;, &#34;clicks&#34;: &#34;sum&#34;, &#34;geohash&#34;: &#34;first&#34;}
+        )
+        perf[&#34;ctr&#34;] = perf[&#34;clicks&#34;] / perf[&#34;impressions&#34;]
+        perf[&#34;ctr_perc&#34;] = perf[&#34;ctr&#34;] * 100
+
+        minctr = perf[&#34;ctr_perc&#34;].min()
+        maxctr = perf[&#34;ctr_perc&#34;].max()
+
+        # Print ctr and impressions range
+        print(&#34;ctr:&#34;, minctr, &#34;-&#34;, maxctr)
+        print(&#34;impressions:&#34;, perf[&#34;impressions&#34;].min(), &#34;-&#34;, perf[&#34;impressions&#34;].max())
+
+        def linmap(v, mn, mx, mn_to=0, mx_to=1):
+            return (v - mn) / (mx - mn) * (mx_to - mn_to) + mn_to
+
+        colormap = cm.LinearColormap(
+            colors=[&#34;#F5A331&#34;, &#34;#F5E214&#34;, &#34;#35CC3F&#34;],
+            index=[minctr - 0.15, (minctr - 0.15 + maxctr) / 2, maxctr],
+            vmin=minctr - 0.15,
+            vmax=maxctr,
+        )
+
+        # Creates the marker for an AOI
+        def marker(geohash, size, intensity):
+            return folium.CircleMarker(
+                pygeohash.decode(geohash),
+                radius=size,
+                # color=matplotlib.colors.rgb2hex(colormap(intensity)),
+                # fill_color=matplotlib.colors.rgb2hex(colormap(intensity)),
+                color=colormap(intensity),
+                fill_color=colormap(intensity),
+                opacity=1,
+                fill_opacity=0.4,
+            )
+
+        for _, aoi in perf.iterrows():
+            size = linmap(
+                aoi[&#34;impressions&#34;],
+                perf[&#34;impressions&#34;].min(),
+                perf[&#34;impressions&#34;].max(),
+                mn_to=10,
+                mx_to=25,
+            )
+            intensity = aoi[&#34;ctr_perc&#34;]
+            self.fmap.add_child(marker(aoi[&#34;geohash&#34;], size, intensity))
+
+        # Update map boundaries
+        aoi_centroids = np.array(
+            list(perf[&#34;geohash&#34;].apply(lambda g: pygeohash.decode(g)))
+        )
+        self._update_bounds(aoi_centroids[:, 0], aoi_centroids[:, 1])
+        return self
+
     def show(self) -&gt; object:
         &#34;&#34;&#34;
-        Show AOIs layer on the map
+        Display the map
 
         Returns:
-            self, for displaying / chaining
+            self, for chaining
         &#34;&#34;&#34;
-        print(&#34;todo: compute bounds and feature groups&#34;)
-        print(self.bounds)
         self.fmap.fit_bounds([self.bounds[&#34;sw&#34;], self.bounds[&#34;ne&#34;]])
+        return self.fmap
+
+    def save(self, to: str) -&gt; object:
+        &#34;&#34;&#34;
+        Save the map in a generated folder
+
+        Args:
+            to (str): the new file name, without extension
+
+        Returns:
+            self, for chaining
+        &#34;&#34;&#34;
+        _save_map(self.fmap, to=to)
         return self.fmap</code></pre>
 </details>
 <h3>Methods</h3>
@@ -339,22 +437,26 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
 <span>def <span class="ident">add_aois</span></span>(<span>self, aois: pandas.core.frame.DataFrame) ‑> None</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Add a layer with AOIs to display</p>
+<div class="desc"><p>Add a layer with AOIs</p>
 <h2 id="args">Args</h2>
 <dl>
 <dt><strong><code>aois</code></strong> :&ensp;<code>DataFrame</code></dt>
 <dd>The aois to display on the map</dd>
-</dl></div>
+</dl>
+<h2 id="returns">Returns</h2>
+<p>self, for chaining</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def add_aois(self, aois: pd.DataFrame) -&gt; None:
     &#34;&#34;&#34;
-    Add a layer with AOIs to display
+    Add a layer with AOIs
 
     Args:
         aois (DataFrame): The aois to display on the map
+    Returns:
+        self, for chaining
     &#34;&#34;&#34;
     for index, aoi in aois.iterrows():
         popup = folium.Popup(
@@ -367,8 +469,8 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
             [aoi[&#34;latitude&#34;], aoi[&#34;longitude&#34;]],
             radius=aoi[&#34;radius_km&#34;] * 1000,
             popup=popup,
-            fill_color=Palette.AOI.value,
-            color=Palette.AOI.value,
+            fill_color=_Palette.AOI.value,
+            color=_Palette.AOI.value,
             opacity=0.3,
         ).add_to(self.fmap)
 
@@ -376,87 +478,141 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
     return self  # for serialisation</code></pre>
 </details>
 </dd>
+<dt id="reportlib.maps.AtomMap.add_aois_perf"><code class="name flex">
+<span>def <span class="ident">add_aois_perf</span></span>(<span>self, df)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Add a layer showing performance per AOI, color represents clickthrough rate and size impressions volume</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>df</code></strong> :&ensp;<code>DataFrame</code></dt>
+<dd>The performance data, must have a geohash column to locate the aois</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<p>self, for chaining</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def add_aois_perf(
+    self,
+    df,
+):
+    &#34;&#34;&#34;
+    Add a layer showing performance per AOI, color represents clickthrough rate and size impressions volume
+
+    Args:
+        df (DataFrame): The performance data, must have a geohash column to locate the aois
+    Returns:
+        self, for chaining
+    &#34;&#34;&#34;
+    # Group and compute performance
+    perf = df.groupby(&#34;geohash&#34;, as_index=False).agg(
+        {&#34;impressions&#34;: &#34;sum&#34;, &#34;clicks&#34;: &#34;sum&#34;, &#34;geohash&#34;: &#34;first&#34;}
+    )
+    perf[&#34;ctr&#34;] = perf[&#34;clicks&#34;] / perf[&#34;impressions&#34;]
+    perf[&#34;ctr_perc&#34;] = perf[&#34;ctr&#34;] * 100
+
+    minctr = perf[&#34;ctr_perc&#34;].min()
+    maxctr = perf[&#34;ctr_perc&#34;].max()
+
+    # Print ctr and impressions range
+    print(&#34;ctr:&#34;, minctr, &#34;-&#34;, maxctr)
+    print(&#34;impressions:&#34;, perf[&#34;impressions&#34;].min(), &#34;-&#34;, perf[&#34;impressions&#34;].max())
+
+    def linmap(v, mn, mx, mn_to=0, mx_to=1):
+        return (v - mn) / (mx - mn) * (mx_to - mn_to) + mn_to
+
+    colormap = cm.LinearColormap(
+        colors=[&#34;#F5A331&#34;, &#34;#F5E214&#34;, &#34;#35CC3F&#34;],
+        index=[minctr - 0.15, (minctr - 0.15 + maxctr) / 2, maxctr],
+        vmin=minctr - 0.15,
+        vmax=maxctr,
+    )
+
+    # Creates the marker for an AOI
+    def marker(geohash, size, intensity):
+        return folium.CircleMarker(
+            pygeohash.decode(geohash),
+            radius=size,
+            # color=matplotlib.colors.rgb2hex(colormap(intensity)),
+            # fill_color=matplotlib.colors.rgb2hex(colormap(intensity)),
+            color=colormap(intensity),
+            fill_color=colormap(intensity),
+            opacity=1,
+            fill_opacity=0.4,
+        )
+
+    for _, aoi in perf.iterrows():
+        size = linmap(
+            aoi[&#34;impressions&#34;],
+            perf[&#34;impressions&#34;].min(),
+            perf[&#34;impressions&#34;].max(),
+            mn_to=10,
+            mx_to=25,
+        )
+        intensity = aoi[&#34;ctr_perc&#34;]
+        self.fmap.add_child(marker(aoi[&#34;geohash&#34;], size, intensity))
+
+    # Update map boundaries
+    aoi_centroids = np.array(
+        list(perf[&#34;geohash&#34;].apply(lambda g: pygeohash.decode(g)))
+    )
+    self._update_bounds(aoi_centroids[:, 0], aoi_centroids[:, 1])
+    return self</code></pre>
+</details>
+</dd>
+<dt id="reportlib.maps.AtomMap.save"><code class="name flex">
+<span>def <span class="ident">save</span></span>(<span>self, to: str) ‑> object</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Save the map in a generated folder</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>to</code></strong> :&ensp;<code>str</code></dt>
+<dd>the new file name, without extension</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<p>self, for chaining</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def save(self, to: str) -&gt; object:
+    &#34;&#34;&#34;
+    Save the map in a generated folder
+
+    Args:
+        to (str): the new file name, without extension
+
+    Returns:
+        self, for chaining
+    &#34;&#34;&#34;
+    _save_map(self.fmap, to=to)
+    return self.fmap</code></pre>
+</details>
+</dd>
 <dt id="reportlib.maps.AtomMap.show"><code class="name flex">
 <span>def <span class="ident">show</span></span>(<span>self) ‑> object</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Show AOIs layer on the map</p>
+<div class="desc"><p>Display the map</p>
 <h2 id="returns">Returns</h2>
-<p>self, for displaying / chaining</p></div>
+<p>self, for chaining</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def show(self) -&gt; object:
     &#34;&#34;&#34;
-    Show AOIs layer on the map
+    Display the map
 
     Returns:
-        self, for displaying / chaining
+        self, for chaining
     &#34;&#34;&#34;
-    print(&#34;todo: compute bounds and feature groups&#34;)
-    print(self.bounds)
     self.fmap.fit_bounds([self.bounds[&#34;sw&#34;], self.bounds[&#34;ne&#34;]])
     return self.fmap</code></pre>
 </details>
-</dd>
-</dl>
-</dd>
-<dt id="reportlib.maps.Cmap"><code class="flex name class">
-<span>class <span class="ident">Cmap</span></span>
-<span>(</span><span>value, names=None, *, module=None, qualname=None, type=None, start=1)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>An enumeration.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">class Cmap(Enum):
-    QUALITATIVE = [
-        &#34;#1f77b4&#34;,
-        &#34;#2ca02c&#34;,
-        &#34;#ff7f0e&#34;,
-        &#34;#d62728&#34;,
-        &#34;#9467bd&#34;,
-        &#34;#8c564b&#34;,
-        &#34;#e377c2&#34;,
-    ]</code></pre>
-</details>
-<h3>Ancestors</h3>
-<ul class="hlist">
-<li>enum.Enum</li>
-</ul>
-<h3>Class variables</h3>
-<dl>
-<dt id="reportlib.maps.Cmap.QUALITATIVE"><code class="name">var <span class="ident">QUALITATIVE</span></code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-</dl>
-</dd>
-<dt id="reportlib.maps.Palette"><code class="flex name class">
-<span>class <span class="ident">Palette</span></span>
-<span>(</span><span>value, names=None, *, module=None, qualname=None, type=None, start=1)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>An enumeration.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">class Palette(Enum):
-    AOI = &#34;blue&#34;</code></pre>
-</details>
-<h3>Ancestors</h3>
-<ul class="hlist">
-<li>enum.Enum</li>
-</ul>
-<h3>Class variables</h3>
-<dl>
-<dt id="reportlib.maps.Palette.AOI"><code class="name">var <span class="ident">AOI</span></code></dt>
-<dd>
-<div class="desc"></div>
 </dd>
 </dl>
 </dd>
@@ -514,7 +670,6 @@ access_token=pk.eyJ1IjoiZ2FzcGFyZGZldXZyYXkiLCJhIjoiY2p2YzdhMHZzMWZyMzN5bWo3dTUw
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
 <li><code><a title="reportlib.maps.create_map" href="#reportlib.maps.create_map">create_map</a></code></li>
-<li><code><a title="reportlib.maps.save_map" href="#reportlib.maps.save_map">save_map</a></code></li>
 </ul>
 </li>
 <li><h3><a href="#header-classes">Classes</a></h3>
@@ -523,19 +678,9 @@ access_token=pk.eyJ1IjoiZ2FzcGFyZGZldXZyYXkiLCJhIjoiY2p2YzdhMHZzMWZyMzN5bWo3dTUw
 <h4><code><a title="reportlib.maps.AtomMap" href="#reportlib.maps.AtomMap">AtomMap</a></code></h4>
 <ul class="">
 <li><code><a title="reportlib.maps.AtomMap.add_aois" href="#reportlib.maps.AtomMap.add_aois">add_aois</a></code></li>
+<li><code><a title="reportlib.maps.AtomMap.add_aois_perf" href="#reportlib.maps.AtomMap.add_aois_perf">add_aois_perf</a></code></li>
+<li><code><a title="reportlib.maps.AtomMap.save" href="#reportlib.maps.AtomMap.save">save</a></code></li>
 <li><code><a title="reportlib.maps.AtomMap.show" href="#reportlib.maps.AtomMap.show">show</a></code></li>
-</ul>
-</li>
-<li>
-<h4><code><a title="reportlib.maps.Cmap" href="#reportlib.maps.Cmap">Cmap</a></code></h4>
-<ul class="">
-<li><code><a title="reportlib.maps.Cmap.QUALITATIVE" href="#reportlib.maps.Cmap.QUALITATIVE">QUALITATIVE</a></code></li>
-</ul>
-</li>
-<li>
-<h4><code><a title="reportlib.maps.Palette" href="#reportlib.maps.Palette">Palette</a></code></h4>
-<ul class="">
-<li><code><a title="reportlib.maps.Palette.AOI" href="#reportlib.maps.Palette.AOI">AOI</a></code></li>
 </ul>
 </li>
 <li>

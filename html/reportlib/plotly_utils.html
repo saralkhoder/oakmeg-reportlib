@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
-<title>reportlib.utils API documentation</title>
-<meta name="description" content="General utilities" />
+<title>reportlib.plotly_utils API documentation</title>
+<meta name="description" content="" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
 <link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
@@ -19,37 +19,76 @@
 <main>
 <article id="content">
 <header>
-<h1 class="title">Module <code>reportlib.utils</code></h1>
+<h1 class="title">Module <code>reportlib.plotly_utils</code></h1>
 </header>
 <section id="section-intro">
-<p>General utilities</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">&#34;&#34;&#34;General utilities&#34;&#34;&#34;
-import os
-import webbrowser
-from enum import Enum
+<pre><code class="python">from pathlib import Path
+
+import plotly.graph_objects as go
+import plotly.io as pio
+
+M0_LAYOUT = {&#34;margin&#34;: dict(t=0, b=0, l=0, r=0)}
+
+MX0_LAYOUT = {&#34;margin&#34;: dict(l=0, r=0)}
+
+DEFAULT_LAYOUT = {&#34;font_family&#34;: &#34;AppleGothic&#34;}
+
+TRANSPARENT_LAYOUT = {&#34;paper_bgcolor&#34;: &#34;rgba(0,0,0,0)&#34;, &#34;plot_bgcolor&#34;: &#34;rgba(0,0,0,0)&#34;}
 
 
-class Colors(Enum):
-    BLUE = &#34;#636EFA&#34;
-    LIGHTBLUE = &#34;#55BDFF&#34;
-    ORANGE = &#34;#F7C92F&#34;
-    GREEN = &#34;#5DBD48&#34;
-    PINK = &#34;#DE89FA&#34;
-    # px.colors.qualitative.T10[4]
+# Set default style for all plotly figures
+def use_atom_style():
+    pio.templates[&#34;atom&#34;] = go.layout.Template(
+        layout=go.Layout(
+            font_family=&#34;AppleGothic&#34;,
+            # colorway=[&#39;#1F77B4&#39;, &#39;#FF7F0E&#39;, &#39;#2CA02C&#39;, &#39;#9467BD&#39;],  # Plotly
+            colorway=[&#34;#4C78A8&#34;, &#34;#F58518&#34;, &#34;#54A24B&#34;, &#34;#EECA3B&#34;],  # Matplotlib
+            plot_bgcolor=&#34;#E5ECF6&#34;,
+            xaxis={
+                &#34;automargin&#34;: True,
+                &#34;gridcolor&#34;: &#34;white&#34;,
+                &#34;linecolor&#34;: &#34;white&#34;,
+                &#34;ticks&#34;: &#34;&#34;,
+                &#34;title&#34;: {&#34;standoff&#34;: 150},
+                &#34;zerolinecolor&#34;: &#34;white&#34;,
+                &#34;zerolinewidth&#34;: 2,
+            },
+            yaxis={
+                &#34;automargin&#34;: True,
+                &#34;gridcolor&#34;: &#34;white&#34;,
+                &#34;linecolor&#34;: &#34;white&#34;,
+                &#34;ticks&#34;: &#34;&#34;,
+                &#34;title&#34;: {&#34;standoff&#34;: 15},
+                &#34;zerolinecolor&#34;: &#34;white&#34;,
+                &#34;zerolinewidth&#34;: 2,
+            },
+            yaxis2={
+                &#34;automargin&#34;: True,
+                &#34;gridcolor&#34;: &#34;white&#34;,
+                &#34;linecolor&#34;: &#34;white&#34;,
+                &#34;ticks&#34;: &#34;&#34;,
+                &#34;title&#34;: {&#34;standoff&#34;: 15},
+                &#34;zerolinecolor&#34;: &#34;white&#34;,
+                &#34;zerolinewidth&#34;: 2,
+            },
+            margin=dict(t=40, b=0, l=0, r=0),
+        )
+    )
+    pio.templates.default = &#34;atom&#34;
 
 
-def open_documentation():
-    &#34;&#34;&#34;
-    Open the **reportlib documentation** in a new browser tab
-    &#34;&#34;&#34;
-    webbrowser.open(
-        &#34;file://&#34; + os.path.abspath(__file__ + &#34;../../../html/reportlib/index.html&#34;),
-        new=2,
-    )</code></pre>
+def save_fig_to(fig, to, width=None, height=None):
+    Path(&#34;generated&#34;).mkdir(parents=True, exist_ok=True)
+
+    save_path = &#34;generated/&#34; + to + &#34;.png&#34;
+    if width and height:
+        fig.write_image(save_path, width=width, height=height, scale=4)
+    else:
+        fig.write_image(save_path, scale=4)</code></pre>
 </details>
 </section>
 <section>
@@ -59,76 +98,77 @@ def open_documentation():
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
-<dt id="reportlib.utils.open_documentation"><code class="name flex">
-<span>def <span class="ident">open_documentation</span></span>(<span>)</span>
+<dt id="reportlib.plotly_utils.save_fig_to"><code class="name flex">
+<span>def <span class="ident">save_fig_to</span></span>(<span>fig, to, width=None, height=None)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Open the <strong>reportlib documentation</strong> in a new browser tab</p></div>
+<div class="desc"></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def open_documentation():
-    &#34;&#34;&#34;
-    Open the **reportlib documentation** in a new browser tab
-    &#34;&#34;&#34;
-    webbrowser.open(
-        &#34;file://&#34; + os.path.abspath(__file__ + &#34;../../../html/reportlib/index.html&#34;),
-        new=2,
-    )</code></pre>
+<pre><code class="python">def save_fig_to(fig, to, width=None, height=None):
+    Path(&#34;generated&#34;).mkdir(parents=True, exist_ok=True)
+
+    save_path = &#34;generated/&#34; + to + &#34;.png&#34;
+    if width and height:
+        fig.write_image(save_path, width=width, height=height, scale=4)
+    else:
+        fig.write_image(save_path, scale=4)</code></pre>
+</details>
+</dd>
+<dt id="reportlib.plotly_utils.use_atom_style"><code class="name flex">
+<span>def <span class="ident">use_atom_style</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def use_atom_style():
+    pio.templates[&#34;atom&#34;] = go.layout.Template(
+        layout=go.Layout(
+            font_family=&#34;AppleGothic&#34;,
+            # colorway=[&#39;#1F77B4&#39;, &#39;#FF7F0E&#39;, &#39;#2CA02C&#39;, &#39;#9467BD&#39;],  # Plotly
+            colorway=[&#34;#4C78A8&#34;, &#34;#F58518&#34;, &#34;#54A24B&#34;, &#34;#EECA3B&#34;],  # Matplotlib
+            plot_bgcolor=&#34;#E5ECF6&#34;,
+            xaxis={
+                &#34;automargin&#34;: True,
+                &#34;gridcolor&#34;: &#34;white&#34;,
+                &#34;linecolor&#34;: &#34;white&#34;,
+                &#34;ticks&#34;: &#34;&#34;,
+                &#34;title&#34;: {&#34;standoff&#34;: 150},
+                &#34;zerolinecolor&#34;: &#34;white&#34;,
+                &#34;zerolinewidth&#34;: 2,
+            },
+            yaxis={
+                &#34;automargin&#34;: True,
+                &#34;gridcolor&#34;: &#34;white&#34;,
+                &#34;linecolor&#34;: &#34;white&#34;,
+                &#34;ticks&#34;: &#34;&#34;,
+                &#34;title&#34;: {&#34;standoff&#34;: 15},
+                &#34;zerolinecolor&#34;: &#34;white&#34;,
+                &#34;zerolinewidth&#34;: 2,
+            },
+            yaxis2={
+                &#34;automargin&#34;: True,
+                &#34;gridcolor&#34;: &#34;white&#34;,
+                &#34;linecolor&#34;: &#34;white&#34;,
+                &#34;ticks&#34;: &#34;&#34;,
+                &#34;title&#34;: {&#34;standoff&#34;: 15},
+                &#34;zerolinecolor&#34;: &#34;white&#34;,
+                &#34;zerolinewidth&#34;: 2,
+            },
+            margin=dict(t=40, b=0, l=0, r=0),
+        )
+    )
+    pio.templates.default = &#34;atom&#34;</code></pre>
 </details>
 </dd>
 </dl>
 </section>
 <section>
-<h2 class="section-title" id="header-classes">Classes</h2>
-<dl>
-<dt id="reportlib.utils.Colors"><code class="flex name class">
-<span>class <span class="ident">Colors</span></span>
-<span>(</span><span>value, names=None, *, module=None, qualname=None, type=None, start=1)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>An enumeration.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">class Colors(Enum):
-    BLUE = &#34;#636EFA&#34;
-    LIGHTBLUE = &#34;#55BDFF&#34;
-    ORANGE = &#34;#F7C92F&#34;
-    GREEN = &#34;#5DBD48&#34;
-    PINK = &#34;#DE89FA&#34;</code></pre>
-</details>
-<h3>Ancestors</h3>
-<ul class="hlist">
-<li>enum.Enum</li>
-</ul>
-<h3>Class variables</h3>
-<dl>
-<dt id="reportlib.utils.Colors.BLUE"><code class="name">var <span class="ident">BLUE</span></code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt id="reportlib.utils.Colors.GREEN"><code class="name">var <span class="ident">GREEN</span></code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt id="reportlib.utils.Colors.LIGHTBLUE"><code class="name">var <span class="ident">LIGHTBLUE</span></code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt id="reportlib.utils.Colors.ORANGE"><code class="name">var <span class="ident">ORANGE</span></code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt id="reportlib.utils.Colors.PINK"><code class="name">var <span class="ident">PINK</span></code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-</dl>
-</dd>
-</dl>
 </section>
 </article>
 <nav id="sidebar">
@@ -144,21 +184,8 @@ def open_documentation():
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
-<li><code><a title="reportlib.utils.open_documentation" href="#reportlib.utils.open_documentation">open_documentation</a></code></li>
-</ul>
-</li>
-<li><h3><a href="#header-classes">Classes</a></h3>
-<ul>
-<li>
-<h4><code><a title="reportlib.utils.Colors" href="#reportlib.utils.Colors">Colors</a></code></h4>
-<ul class="">
-<li><code><a title="reportlib.utils.Colors.BLUE" href="#reportlib.utils.Colors.BLUE">BLUE</a></code></li>
-<li><code><a title="reportlib.utils.Colors.GREEN" href="#reportlib.utils.Colors.GREEN">GREEN</a></code></li>
-<li><code><a title="reportlib.utils.Colors.LIGHTBLUE" href="#reportlib.utils.Colors.LIGHTBLUE">LIGHTBLUE</a></code></li>
-<li><code><a title="reportlib.utils.Colors.ORANGE" href="#reportlib.utils.Colors.ORANGE">ORANGE</a></code></li>
-<li><code><a title="reportlib.utils.Colors.PINK" href="#reportlib.utils.Colors.PINK">PINK</a></code></li>
-</ul>
-</li>
+<li><code><a title="reportlib.plotly_utils.save_fig_to" href="#reportlib.plotly_utils.save_fig_to">save_fig_to</a></code></li>
+<li><code><a title="reportlib.plotly_utils.use_atom_style" href="#reportlib.plotly_utils.use_atom_style">use_atom_style</a></code></li>
 </ul>
 </li>
 </ul>
