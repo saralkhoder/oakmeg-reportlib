@@ -15,8 +15,9 @@ class _Palette(Enum):
     CTR = Colors.GREEN.value
 
 
-def plot_daily(
+def plot_by(
     df: pd.DataFrame,
+    column: str,
     with_reach: bool = True,
     min_impressions: int = 20,
     size: list = [850, 400],
@@ -24,23 +25,31 @@ def plot_daily(
     save_to: str = None,
 ):
     """
-    Plot a daily performance bar + line chart showing impressions, reach (optional) and ctr
-        Args:
-            df (DataFrame): input data, can be exploded or already aggrega
-            with_reach (bool): include reach
-            min_impressions (number): threshold under which impressions are not displayed
-            size (list): figure size, formatted as [width, height]
-            legend_position ('left' | 'right'): legend box horizontal position
-            save_to (str): save as png, don't write any extension here
+    Plot a performance bar + line chart showing **impressions**, **reach** (optional) and **ctr**
 
-        Returns:
-            figure (plotly.graph_object.Figure)
+    Can be plotted by day or by category like message
+
+    Usage:
+        ``performance.plot_by(data.dash, 'date_served', legend_position='right', save_to='perf_daily')``
+
+    Args:
+        df (DataFrame): input data, can be exploded or already aggregated
+        column (str): the column name to plot by
+        with_reach (bool): *optional*, include reach
+        min_impressions (number): *optional*, threshold under which impressions are not displayed
+        size (list): *optional*, figure size, formatted as [width, height]
+        legend_position ('left' | 'right'): *optional*, legend box horizontal position
+        save_to (str, optional): *optional*, save as png, don't write any extension here
+
+    Returns:
+        figure (plotly.graph_object.Figure)
     """
+    is_time_graph = column == "date_served"
 
     with_reach = with_reach and "mobile_id" in df
 
     # only add reach if MAIDs are available and with_reach is True
-    by_day = df.groupby(["date_served"], as_index=False, dropna=False).agg(
+    grouped = df.groupby([column], as_index=False, dropna=False).agg(
         {
             **{
                 "impressions": "sum",
@@ -49,26 +58,26 @@ def plot_daily(
             **({"mobile_id": lambda x: x.nunique()} if with_reach else dict()),
         }
     )
-    by_day["ctr"] = by_day["clicks"] / by_day["impressions"]
+    grouped["ctr"] = grouped["clicks"] / grouped["impressions"]
 
     # Filter out dates with quasi zero impressions
-    by_day = by_day[by_day["impressions"] > min_impressions]
+    grouped = grouped[grouped["impressions"] > min_impressions]
 
     fig = make_subplots(
         specs=[[{"secondary_y": True}]],
         figure=go.Figure(layout={**DEFAULT_LAYOUT, **M0_LAYOUT}),
     )
 
-    w_basis = np.asarray([1000 * 3600 * 19] * len(by_day["date_served"]))
+    w_basis = np.asarray([1000 * 3600 * 19] * len(grouped[column]))
 
     # Impressions
     fig.add_trace(
         go.Bar(
             name="Impressions",
-            x=by_day["date_served"],
-            y=by_day["impressions"],
+            x=grouped[column],
+            y=grouped["impressions"],
             marker_color=_Palette.IMPRESSIONS.value,
-            offset=-w_basis / 2,
+            offset=-w_basis / 2 if is_time_graph else -0.4,
         ),
         secondary_y=False,
     )
@@ -78,10 +87,10 @@ def plot_daily(
         fig.add_trace(
             go.Bar(
                 name="Reach",
-                x=by_day["date_served"],
-                y=by_day["mobile_id"],
+                x=grouped[column],
+                y=grouped["mobile_id"],
                 marker_color=_Palette.REACH.value,
-                offset=-w_basis / 2,
+                offset=-w_basis / 2 if is_time_graph else -0.4,
             ),
             secondary_y=False,
         )
@@ -89,11 +98,16 @@ def plot_daily(
     # CTR
     fig.add_trace(
         go.Scatter(
-            x=by_day["date_served"],
-            y=by_day["ctr"],
+            x=grouped[column],
+            y=grouped["ctr"],
             name="CTR",
+            marker=dict(size=8)
+            if is_time_graph
+            else dict(
+                size=18, symbol="line-ew", line=dict(color=_Palette.CTR.value, width=6)
+            ),
             marker_color=_Palette.CTR.value,
-            mode="lines+markers",
+            mode="lines+markers" if is_time_graph else "markers",
             line_shape="spline",
         ),
         secondary_y=True,
@@ -102,7 +116,7 @@ def plot_daily(
     # Adjust layout
     fig.update_layout(
         yaxis=dict(tickformat="s"),
-        yaxis2=dict(tickformat="0.2%", range=[0, by_day["ctr"].max() * 1.5]),
+        yaxis2=dict(tickformat="0.2%", range=[0, grouped["ctr"].max() * 1.5]),
         xaxis=dict(tickformat="%b %d", tickmode="auto"),
         legend=dict(
             yanchor="top",
