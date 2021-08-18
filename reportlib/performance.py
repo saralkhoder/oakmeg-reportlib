@@ -20,7 +20,8 @@ def plot_by(
     column: str,
     with_reach: bool = True,
     min_impressions: int = 20,
-    size: list = [850, 400],
+    size: list = [750, 350],
+    sort_by: str = None,
     legend_position: str = "left",
     save_to: str = None,
 ):
@@ -38,6 +39,7 @@ def plot_by(
         with_reach (bool): *optional*, include reach
         min_impressions (number): *optional*, threshold under which impressions are not displayed
         size (list): *optional*, figure size, formatted as [width, height]
+        sort_by (bool): *optional*, what column to sort the x-axis with
         legend_position ('left' | 'right'): *optional*, legend box horizontal position
         save_to (str, optional): *optional*, save as png, don't write any extension here
 
@@ -59,6 +61,9 @@ def plot_by(
         }
     )
     grouped["ctr"] = grouped["clicks"] / grouped["impressions"]
+
+    if not is_time_graph and sort_by:
+        grouped = grouped.sort_values(sort_by, ascending=False)
 
     # Filter out dates with quasi zero impressions
     grouped = grouped[grouped["impressions"] > min_impressions]
