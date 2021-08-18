@@ -92,15 +92,21 @@ class AtomMap:
         self._update_bounds(aois["latitude"], aois["longitude"])
         return self  # for serialisation
 
+    # TODO: make this work consistently, edit parameters
     def add_aois_perf(
         self,
-        df,
+        df: pd.DataFrame,
+        ctr_color_offset: int = 0,
+        markers_size_range: list = [10, 25],
     ):
         """
         Add a layer showing performance per AOI, color represents clickthrough rate and size impressions volume
 
         Args:
             df (DataFrame): The performance data, must have a geohash column to locate the aois
+            ctr_color_offset (int): *optional*, by how much to offset the lower bound of the ctr range, will make
+            all markers greener
+            markers_size_range ([int, int]): *optional*, the range of marker size
         Returns:
             self, for chaining
         """
@@ -115,16 +121,20 @@ class AtomMap:
         maxctr = perf["ctr_perc"].max()
 
         # Print ctr and impressions range
-        print("ctr:", minctr, "-", maxctr)
-        print("impressions:", perf["impressions"].min(), "-", perf["impressions"].max())
+        print("ctr range for color:", minctr - ctr_color_offset, "-", maxctr)
+        print("impressions range:", perf["impressions"].min(), "-", perf["impressions"].max())
 
         def linmap(v, mn, mx, mn_to=0, mx_to=1):
             return (v - mn) / (mx - mn) * (mx_to - mn_to) + mn_to
 
         colormap = cm.LinearColormap(
             colors=["#F5A331", "#F5E214", "#35CC3F"],
-            index=[minctr - 0.15, (minctr - 0.15 + maxctr) / 2, maxctr],
-            vmin=minctr - 0.15,
+            index=[
+                minctr - ctr_color_offset,
+                (minctr - ctr_color_offset + maxctr) / 2,
+                maxctr,
+            ],
+            vmin=minctr - ctr_color_offset,
             vmax=maxctr,
         )
 
@@ -146,8 +156,8 @@ class AtomMap:
                 aoi["impressions"],
                 perf["impressions"].min(),
                 perf["impressions"].max(),
-                mn_to=10,
-                mx_to=25,
+                mn_to=markers_size_range[0],
+                mx_to=markers_size_range[1],
             )
             intensity = aoi["ctr_perc"]
             self.fmap.add_child(marker(aoi["geohash"], size, intensity))
@@ -157,6 +167,43 @@ class AtomMap:
             list(perf["geohash"].apply(lambda g: pygeohash.decode(g)))
         )
         self._update_bounds(aoi_centroids[:, 0], aoi_centroids[:, 1])
+        return self
+
+    def add_points(
+        self,
+        df: pd.DataFrame,
+        lat: str = "latitude",
+        lon: str = "longitude",
+        color: Colors = Colors.BLUE,
+        rad: int = 1,
+        plot_max: int = 20000,
+    ):
+        assert (
+            lat in df.columns and lon in df.columns
+        ), "lat/lon not found, check dataframe or use lat and lon paramaters"
+        df = df.dropna(subset=[lat, lon])
+
+        # apply plot_max cap
+        if len(df) > plot_max:
+            print("df has", len(df), "rows, capping at", plot_max, "!")
+            df = df.sample(plot_max)
+        else:
+            df = df
+
+        # add points to the map
+        df.apply(
+            lambda row: folium.CircleMarker(
+                [row[lat], row[lon]],
+                radius=rad,
+                color=color.value,
+                fill=True,
+                fill_opacity=1,
+                opacity=1,
+            ).add_to(self.fmap),
+            axis=1,
+        )
+
+        self._update_bounds(df[lat], df[lon])
         return self
 
     def show(self) -> object:
