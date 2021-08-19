@@ -33,13 +33,13 @@ import webbrowser
 from enum import Enum
 
 
-class Colors(Enum):
+class Color(Enum):
+    LIGHTGREY = &#34;#D0D6D9&#34;
     BLUE = &#34;#636EFA&#34;
     LIGHTBLUE = &#34;#55BDFF&#34;
-    ORANGE = &#34;#F7C92F&#34;
+    ORANGE = &#34;#F2C11F&#34;
     GREEN = &#34;#5DBD48&#34;
     PINK = &#34;#DE89FA&#34;
-    # px.colors.qualitative.T10[4]
 
 
 def open_documentation():
@@ -83,8 +83,8 @@ def open_documentation():
 <section>
 <h2 class="section-title" id="header-classes">Classes</h2>
 <dl>
-<dt id="reportlib.utils.Colors"><code class="flex name class">
-<span>class <span class="ident">Colors</span></span>
+<dt id="reportlib.utils.Color"><code class="flex name class">
+<span>class <span class="ident">Color</span></span>
 <span>(</span><span>value, names=None, *, module=None, qualname=None, type=None, start=1)</span>
 </code></dt>
 <dd>
@@ -93,10 +93,11 @@ def open_documentation():
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">class Colors(Enum):
+<pre><code class="python">class Color(Enum):
+    LIGHTGREY = &#34;#D0D6D9&#34;
     BLUE = &#34;#636EFA&#34;
     LIGHTBLUE = &#34;#55BDFF&#34;
-    ORANGE = &#34;#F7C92F&#34;
+    ORANGE = &#34;#F2C11F&#34;
     GREEN = &#34;#5DBD48&#34;
     PINK = &#34;#DE89FA&#34;</code></pre>
 </details>
@@ -106,23 +107,27 @@ def open_documentation():
 </ul>
 <h3>Class variables</h3>
 <dl>
-<dt id="reportlib.utils.Colors.BLUE"><code class="name">var <span class="ident">BLUE</span></code></dt>
+<dt id="reportlib.utils.Color.BLUE"><code class="name">var <span class="ident">BLUE</span></code></dt>
 <dd>
 <div class="desc"></div>
 </dd>
-<dt id="reportlib.utils.Colors.GREEN"><code class="name">var <span class="ident">GREEN</span></code></dt>
+<dt id="reportlib.utils.Color.GREEN"><code class="name">var <span class="ident">GREEN</span></code></dt>
 <dd>
 <div class="desc"></div>
 </dd>
-<dt id="reportlib.utils.Colors.LIGHTBLUE"><code class="name">var <span class="ident">LIGHTBLUE</span></code></dt>
+<dt id="reportlib.utils.Color.LIGHTBLUE"><code class="name">var <span class="ident">LIGHTBLUE</span></code></dt>
 <dd>
 <div class="desc"></div>
 </dd>
-<dt id="reportlib.utils.Colors.ORANGE"><code class="name">var <span class="ident">ORANGE</span></code></dt>
+<dt id="reportlib.utils.Color.LIGHTGREY"><code class="name">var <span class="ident">LIGHTGREY</span></code></dt>
 <dd>
 <div class="desc"></div>
 </dd>
-<dt id="reportlib.utils.Colors.PINK"><code class="name">var <span class="ident">PINK</span></code></dt>
+<dt id="reportlib.utils.Color.ORANGE"><code class="name">var <span class="ident">ORANGE</span></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt id="reportlib.utils.Color.PINK"><code class="name">var <span class="ident">PINK</span></code></dt>
 <dd>
 <div class="desc"></div>
 </dd>
@@ -150,13 +155,14 @@ def open_documentation():
 <li><h3><a href="#header-classes">Classes</a></h3>
 <ul>
 <li>
-<h4><code><a title="reportlib.utils.Colors" href="#reportlib.utils.Colors">Colors</a></code></h4>
-<ul class="">
-<li><code><a title="reportlib.utils.Colors.BLUE" href="#reportlib.utils.Colors.BLUE">BLUE</a></code></li>
-<li><code><a title="reportlib.utils.Colors.GREEN" href="#reportlib.utils.Colors.GREEN">GREEN</a></code></li>
-<li><code><a title="reportlib.utils.Colors.LIGHTBLUE" href="#reportlib.utils.Colors.LIGHTBLUE">LIGHTBLUE</a></code></li>
-<li><code><a title="reportlib.utils.Colors.ORANGE" href="#reportlib.utils.Colors.ORANGE">ORANGE</a></code></li>
-<li><code><a title="reportlib.utils.Colors.PINK" href="#reportlib.utils.Colors.PINK">PINK</a></code></li>
+<h4><code><a title="reportlib.utils.Color" href="#reportlib.utils.Color">Color</a></code></h4>
+<ul class="two-column">
+<li><code><a title="reportlib.utils.Color.BLUE" href="#reportlib.utils.Color.BLUE">BLUE</a></code></li>
+<li><code><a title="reportlib.utils.Color.GREEN" href="#reportlib.utils.Color.GREEN">GREEN</a></code></li>
+<li><code><a title="reportlib.utils.Color.LIGHTBLUE" href="#reportlib.utils.Color.LIGHTBLUE">LIGHTBLUE</a></code></li>
+<li><code><a title="reportlib.utils.Color.LIGHTGREY" href="#reportlib.utils.Color.LIGHTGREY">LIGHTGREY</a></code></li>
+<li><code><a title="reportlib.utils.Color.ORANGE" href="#reportlib.utils.Color.ORANGE">ORANGE</a></code></li>
+<li><code><a title="reportlib.utils.Color.PINK" href="#reportlib.utils.Color.PINK">PINK</a></code></li>
 </ul>
 </li>
 </ul>

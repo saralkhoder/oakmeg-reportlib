@@ -34,14 +34,14 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from reportlib.utils import Colors
+from reportlib.utils import Color
 from reportlib._plotly_utils import save_fig_to, M0_LAYOUT, DEFAULT_LAYOUT
 
 
 class _Palette(Enum):
-    IMPRESSIONS = Colors.BLUE.value
-    REACH = Colors.LIGHTBLUE.value
-    CTR = Colors.GREEN.value
+    IMPRESSIONS = Color.BLUE.value
+    REACH = Color.LIGHTBLUE.value
+    CTR = Color.GREEN.value
 
 
 def plot_by(
@@ -49,7 +49,8 @@ def plot_by(
     column: str,
     with_reach: bool = True,
     min_impressions: int = 20,
-    size: list = [850, 400],
+    size: list = [750, 350],
+    sort_by: str = None,
     legend_position: str = &#34;left&#34;,
     save_to: str = None,
 ):
@@ -67,6 +68,7 @@ def plot_by(
         with_reach (bool): *optional*, include reach
         min_impressions (number): *optional*, threshold under which impressions are not displayed
         size (list): *optional*, figure size, formatted as [width, height]
+        sort_by (bool): *optional*, what column to sort the x-axis with
         legend_position (&#39;left&#39; | &#39;right&#39;): *optional*, legend box horizontal position
         save_to (str, optional): *optional*, save as png, don&#39;t write any extension here
 
@@ -88,6 +90,9 @@ def plot_by(
         }
     )
     grouped[&#34;ctr&#34;] = grouped[&#34;clicks&#34;] / grouped[&#34;impressions&#34;]
+
+    if not is_time_graph and sort_by:
+        grouped = grouped.sort_values(sort_by, ascending=False)
 
     # Filter out dates with quasi zero impressions
     grouped = grouped[grouped[&#34;impressions&#34;] &gt; min_impressions]
@@ -172,7 +177,7 @@ def plot_by(
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
 <dt id="reportlib.performance.plot_by"><code class="name flex">
-<span>def <span class="ident">plot_by</span></span>(<span>df: pandas.core.frame.DataFrame, column: str, with_reach: bool = True, min_impressions: int = 20, size: list = [850, 400], legend_position: str = 'left', save_to: str = None)</span>
+<span>def <span class="ident">plot_by</span></span>(<span>df: pandas.core.frame.DataFrame, column: str, with_reach: bool = True, min_impressions: int = 20, size: list = [750, 350], sort_by: str = None, legend_position: str = 'left', save_to: str = None)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Plot a performance bar + line chart showing <strong>impressions</strong>, <strong>reach</strong> (optional) and <strong>ctr</strong></p>
@@ -191,6 +196,8 @@ def plot_by(
 <dd><em>optional</em>, threshold under which impressions are not displayed</dd>
 <dt><strong><code>size</code></strong> :&ensp;<code>list</code></dt>
 <dd><em>optional</em>, figure size, formatted as [width, height]</dd>
+<dt><strong><code>sort_by</code></strong> :&ensp;<code>bool</code></dt>
+<dd><em>optional</em>, what column to sort the x-axis with</dd>
 <dt>legend_position ('left' | 'right'): <em>optional</em>, legend box horizontal position</dt>
 <dt><strong><code>save_to</code></strong> :&ensp;<code>str</code>, optional</dt>
 <dd><em>optional</em>, save as png, don't write any extension here</dd>
@@ -206,7 +213,8 @@ def plot_by(
     column: str,
     with_reach: bool = True,
     min_impressions: int = 20,
-    size: list = [850, 400],
+    size: list = [750, 350],
+    sort_by: str = None,
     legend_position: str = &#34;left&#34;,
     save_to: str = None,
 ):
@@ -224,6 +232,7 @@ def plot_by(
         with_reach (bool): *optional*, include reach
         min_impressions (number): *optional*, threshold under which impressions are not displayed
         size (list): *optional*, figure size, formatted as [width, height]
+        sort_by (bool): *optional*, what column to sort the x-axis with
         legend_position (&#39;left&#39; | &#39;right&#39;): *optional*, legend box horizontal position
         save_to (str, optional): *optional*, save as png, don&#39;t write any extension here
 
@@ -245,6 +254,9 @@ def plot_by(
         }
     )
     grouped[&#34;ctr&#34;] = grouped[&#34;clicks&#34;] / grouped[&#34;impressions&#34;]
+
+    if not is_time_graph and sort_by:
+        grouped = grouped.sort_values(sort_by, ascending=False)
 
     # Filter out dates with quasi zero impressions
     grouped = grouped[grouped[&#34;impressions&#34;] &gt; min_impressions]

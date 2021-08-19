@@ -29,18 +29,20 @@
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Module for creating Atom maps&#34;&#34;&#34;
 import io
+import json
 from pathlib import Path
-
 from enum import Enum
+
 import pandas as pd
 import numpy as np
 import pygeohash
+import geojson
 from PIL import Image
 import folium
 from folium import plugins
 from branca import colormap as cm
 
-from reportlib.utils import Colors
+from reportlib.utils import Color
 
 
 class Tile(Enum):
@@ -52,7 +54,7 @@ access_token=pk.eyJ1IjoiZ2FzcGFyZGZldXZyYXkiLCJhIjoiY2p2YzdhMHZzMWZyMzN5bWo3dTUw
 
 
 class _Palette(Enum):
-    AOI = Colors.BLUE.value
+    AOI = Color.BLUE.value
 
 
 class AtomMap:
@@ -65,13 +67,12 @@ class AtomMap:
     &#34;&#34;&#34;
 
     def __init__(self, tile: Tile):
-        self.fmap = create_map(tile)
+        self.fmap = _create_map(tile)
         self.layers = []
         self.bounds = {&#34;sw&#34;: [], &#34;ne&#34;: []}
 
         # Init map
-        self.fmap.add_child(folium.LayerControl())
-        self.fmap.add_child(folium.plugins.MeasureControl(primary_length_unit=&#34;meters&#34;))
+        # self.fmap.add_child(folium.LayerControl())
 
     def _update_bounds(self, lat: list, lon: list) -&gt; object:
         &#34;&#34;&#34;
@@ -99,6 +100,7 @@ class AtomMap:
 
         Args:
             aois (DataFrame): The aois to display on the map
+
         Returns:
             self, for chaining
         &#34;&#34;&#34;
@@ -121,15 +123,22 @@ class AtomMap:
         self._update_bounds(aois[&#34;latitude&#34;], aois[&#34;longitude&#34;])
         return self  # for serialisation
 
+    # TODO: make this work consistently, edit parameters
     def add_aois_perf(
         self,
-        df,
+        df: pd.DataFrame,
+        ctr_color_offset: int = 0,
+        markers_size_range: list = [10, 25],
     ):
         &#34;&#34;&#34;
         Add a layer showing performance per AOI, color represents clickthrough rate and size impressions volume
 
         Args:
             df (DataFrame): The performance data, must have a geohash column to locate the aois
+            ctr_color_offset (int): *optional*, by how much to offset the lower bound of the ctr range, will make
+            all markers greener
+            markers_size_range ([int, int]): *optional*, the range of marker size
+
         Returns:
             self, for chaining
         &#34;&#34;&#34;
@@ -144,16 +153,25 @@ class AtomMap:
         maxctr = perf[&#34;ctr_perc&#34;].max()
 
         # Print ctr and impressions range
-        print(&#34;ctr:&#34;, minctr, &#34;-&#34;, maxctr)
-        print(&#34;impressions:&#34;, perf[&#34;impressions&#34;].min(), &#34;-&#34;, perf[&#34;impressions&#34;].max())
+        print(&#34;ctr range for color:&#34;, minctr - ctr_color_offset, &#34;-&#34;, maxctr)
+        print(
+            &#34;impressions range:&#34;,
+            perf[&#34;impressions&#34;].min(),
+            &#34;-&#34;,
+            perf[&#34;impressions&#34;].max(),
+        )
 
         def linmap(v, mn, mx, mn_to=0, mx_to=1):
             return (v - mn) / (mx - mn) * (mx_to - mn_to) + mn_to
 
         colormap = cm.LinearColormap(
             colors=[&#34;#F5A331&#34;, &#34;#F5E214&#34;, &#34;#35CC3F&#34;],
-            index=[minctr - 0.15, (minctr - 0.15 + maxctr) / 2, maxctr],
-            vmin=minctr - 0.15,
+            index=[
+                minctr - ctr_color_offset,
+                (minctr - ctr_color_offset + maxctr) / 2,
+                maxctr,
+            ],
+            vmin=minctr - ctr_color_offset,
             vmax=maxctr,
         )
 
@@ -175,8 +193,8 @@ class AtomMap:
                 aoi[&#34;impressions&#34;],
                 perf[&#34;impressions&#34;].min(),
                 perf[&#34;impressions&#34;].max(),
-                mn_to=10,
-                mx_to=25,
+                mn_to=markers_size_range[0],
+                mx_to=markers_size_range[1],
             )
             intensity = aoi[&#34;ctr_perc&#34;]
             self.fmap.add_child(marker(aoi[&#34;geohash&#34;], size, intensity))
@@ -186,6 +204,89 @@ class AtomMap:
             list(perf[&#34;geohash&#34;].apply(lambda g: pygeohash.decode(g)))
         )
         self._update_bounds(aoi_centroids[:, 0], aoi_centroids[:, 1])
+        return self
+
+    def add_points(
+        self,
+        df: pd.DataFrame,
+        lat: str = &#34;latitude&#34;,
+        lon: str = &#34;longitude&#34;,
+        color: Color = Color.BLUE,
+        rad: int = 1,
+        plot_max: int = 20000,
+    ):
+        &#34;&#34;&#34;
+        Add a layer showing points from a dataframe
+
+        Args:
+            df (DataFrame): The input data
+            lat (str): *optional*, name of the column containing latitudes
+            lon (str): *optional*, name of the column containing longitudes
+            color (int): *optional*, color of the points
+            rad (int): *optional*, size of the points
+            plot_max (int): *optional*, cap on the number of points to print, sampled randomly if exceeded
+
+        Returns:
+            self, for chaining
+        &#34;&#34;&#34;
+        assert (
+            lat in df.columns and lon in df.columns
+        ), &#34;lat/lon not found, check dataframe or use lat and lon paramaters&#34;
+        df = df.dropna(subset=[lat, lon])
+
+        # apply plot_max cap
+        if len(df) &gt; plot_max:
+            print(&#34;df has&#34;, len(df), &#34;rows, capping at&#34;, plot_max, &#34;!&#34;)
+            df = df.sample(plot_max)
+        else:
+            df = df
+
+        # add points to the map
+        df.apply(
+            lambda row: folium.CircleMarker(
+                [row[lat], row[lon]],
+                radius=rad,
+                color=color.value,
+                fill=True,
+                fill_opacity=1,
+                opacity=1,
+            ).add_to(self.fmap),
+            axis=1,
+        )
+
+        self._update_bounds(df[lat], df[lon])
+        return self
+
+    def add_geojson(self, obj: json, color: Color = Color.BLUE):
+        &#34;&#34;&#34;
+        Add a layer with geojson file
+
+        ! geojson polygons must follow the **right-hand rule** (counter-clockwise) !
+
+        ! geojson format uses **(longitude, latitude)** in that order !
+
+        Args:
+            obj (json): The geojson object
+            color (`reportlib.utils.Color`): *optional*, color of the geojson features
+
+        Returns:
+            self, for chaining
+        &#34;&#34;&#34;
+        geo = folium.GeoJson(
+            obj,
+            name=&#34;blah&#34;,
+            style_function=lambda x: {
+                &#34;fillColor&#34;: color.value,
+                &#34;color&#34;: color.value,
+                &#34;fillOpacity&#34;: 0.1,
+            },
+        )
+        self.fmap.add_child(geo)
+
+        # update bounds
+        for f in obj[&#34;features&#34;]:
+            coords = np.array(list(geojson.utils.coords(f)))
+            self._update_bounds(coords[:, 1], coords[:, 0])
         return self
 
     def show(self) -&gt; object:
@@ -212,7 +313,7 @@ class AtomMap:
         return self.fmap
 
 
-def create_map(tile: Tile) -&gt; folium.Map:
+def _create_map(tile: Tile) -&gt; folium.Map:
     return folium.Map(tiles=None).add_child(
         folium.TileLayer(tile.value, name=&#34;base_map&#34;, attr=&#34;atom&#34;)
     )
@@ -240,24 +341,6 @@ def _save_map(fmap: folium.Map, to: str) -&gt; None:
 <section>
 </section>
 <section>
-<h2 class="section-title" id="header-functions">Functions</h2>
-<dl>
-<dt id="reportlib.maps.create_map"><code class="name flex">
-<span>def <span class="ident">create_map</span></span>(<span>tile: <a title="reportlib.maps.Tile" href="#reportlib.maps.Tile">Tile</a>) ‑> folium.folium.Map</span>
-</code></dt>
-<dd>
-<div class="desc"></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def create_map(tile: Tile) -&gt; folium.Map:
-    return folium.Map(tiles=None).add_child(
-        folium.TileLayer(tile.value, name=&#34;base_map&#34;, attr=&#34;atom&#34;)
-    )</code></pre>
-</details>
-</dd>
-</dl>
 </section>
 <section>
 <h2 class="section-title" id="header-classes">Classes</h2>
@@ -285,13 +368,12 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
     &#34;&#34;&#34;
 
     def __init__(self, tile: Tile):
-        self.fmap = create_map(tile)
+        self.fmap = _create_map(tile)
         self.layers = []
         self.bounds = {&#34;sw&#34;: [], &#34;ne&#34;: []}
 
         # Init map
-        self.fmap.add_child(folium.LayerControl())
-        self.fmap.add_child(folium.plugins.MeasureControl(primary_length_unit=&#34;meters&#34;))
+        # self.fmap.add_child(folium.LayerControl())
 
     def _update_bounds(self, lat: list, lon: list) -&gt; object:
         &#34;&#34;&#34;
@@ -319,6 +401,7 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
 
         Args:
             aois (DataFrame): The aois to display on the map
+
         Returns:
             self, for chaining
         &#34;&#34;&#34;
@@ -341,15 +424,22 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
         self._update_bounds(aois[&#34;latitude&#34;], aois[&#34;longitude&#34;])
         return self  # for serialisation
 
+    # TODO: make this work consistently, edit parameters
     def add_aois_perf(
         self,
-        df,
+        df: pd.DataFrame,
+        ctr_color_offset: int = 0,
+        markers_size_range: list = [10, 25],
     ):
         &#34;&#34;&#34;
         Add a layer showing performance per AOI, color represents clickthrough rate and size impressions volume
 
         Args:
             df (DataFrame): The performance data, must have a geohash column to locate the aois
+            ctr_color_offset (int): *optional*, by how much to offset the lower bound of the ctr range, will make
+            all markers greener
+            markers_size_range ([int, int]): *optional*, the range of marker size
+
         Returns:
             self, for chaining
         &#34;&#34;&#34;
@@ -364,16 +454,25 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
         maxctr = perf[&#34;ctr_perc&#34;].max()
 
         # Print ctr and impressions range
-        print(&#34;ctr:&#34;, minctr, &#34;-&#34;, maxctr)
-        print(&#34;impressions:&#34;, perf[&#34;impressions&#34;].min(), &#34;-&#34;, perf[&#34;impressions&#34;].max())
+        print(&#34;ctr range for color:&#34;, minctr - ctr_color_offset, &#34;-&#34;, maxctr)
+        print(
+            &#34;impressions range:&#34;,
+            perf[&#34;impressions&#34;].min(),
+            &#34;-&#34;,
+            perf[&#34;impressions&#34;].max(),
+        )
 
         def linmap(v, mn, mx, mn_to=0, mx_to=1):
             return (v - mn) / (mx - mn) * (mx_to - mn_to) + mn_to
 
         colormap = cm.LinearColormap(
             colors=[&#34;#F5A331&#34;, &#34;#F5E214&#34;, &#34;#35CC3F&#34;],
-            index=[minctr - 0.15, (minctr - 0.15 + maxctr) / 2, maxctr],
-            vmin=minctr - 0.15,
+            index=[
+                minctr - ctr_color_offset,
+                (minctr - ctr_color_offset + maxctr) / 2,
+                maxctr,
+            ],
+            vmin=minctr - ctr_color_offset,
             vmax=maxctr,
         )
 
@@ -395,8 +494,8 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
                 aoi[&#34;impressions&#34;],
                 perf[&#34;impressions&#34;].min(),
                 perf[&#34;impressions&#34;].max(),
-                mn_to=10,
-                mx_to=25,
+                mn_to=markers_size_range[0],
+                mx_to=markers_size_range[1],
             )
             intensity = aoi[&#34;ctr_perc&#34;]
             self.fmap.add_child(marker(aoi[&#34;geohash&#34;], size, intensity))
@@ -406,6 +505,89 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
             list(perf[&#34;geohash&#34;].apply(lambda g: pygeohash.decode(g)))
         )
         self._update_bounds(aoi_centroids[:, 0], aoi_centroids[:, 1])
+        return self
+
+    def add_points(
+        self,
+        df: pd.DataFrame,
+        lat: str = &#34;latitude&#34;,
+        lon: str = &#34;longitude&#34;,
+        color: Color = Color.BLUE,
+        rad: int = 1,
+        plot_max: int = 20000,
+    ):
+        &#34;&#34;&#34;
+        Add a layer showing points from a dataframe
+
+        Args:
+            df (DataFrame): The input data
+            lat (str): *optional*, name of the column containing latitudes
+            lon (str): *optional*, name of the column containing longitudes
+            color (int): *optional*, color of the points
+            rad (int): *optional*, size of the points
+            plot_max (int): *optional*, cap on the number of points to print, sampled randomly if exceeded
+
+        Returns:
+            self, for chaining
+        &#34;&#34;&#34;
+        assert (
+            lat in df.columns and lon in df.columns
+        ), &#34;lat/lon not found, check dataframe or use lat and lon paramaters&#34;
+        df = df.dropna(subset=[lat, lon])
+
+        # apply plot_max cap
+        if len(df) &gt; plot_max:
+            print(&#34;df has&#34;, len(df), &#34;rows, capping at&#34;, plot_max, &#34;!&#34;)
+            df = df.sample(plot_max)
+        else:
+            df = df
+
+        # add points to the map
+        df.apply(
+            lambda row: folium.CircleMarker(
+                [row[lat], row[lon]],
+                radius=rad,
+                color=color.value,
+                fill=True,
+                fill_opacity=1,
+                opacity=1,
+            ).add_to(self.fmap),
+            axis=1,
+        )
+
+        self._update_bounds(df[lat], df[lon])
+        return self
+
+    def add_geojson(self, obj: json, color: Color = Color.BLUE):
+        &#34;&#34;&#34;
+        Add a layer with geojson file
+
+        ! geojson polygons must follow the **right-hand rule** (counter-clockwise) !
+
+        ! geojson format uses **(longitude, latitude)** in that order !
+
+        Args:
+            obj (json): The geojson object
+            color (`reportlib.utils.Color`): *optional*, color of the geojson features
+
+        Returns:
+            self, for chaining
+        &#34;&#34;&#34;
+        geo = folium.GeoJson(
+            obj,
+            name=&#34;blah&#34;,
+            style_function=lambda x: {
+                &#34;fillColor&#34;: color.value,
+                &#34;color&#34;: color.value,
+                &#34;fillOpacity&#34;: 0.1,
+            },
+        )
+        self.fmap.add_child(geo)
+
+        # update bounds
+        for f in obj[&#34;features&#34;]:
+            coords = np.array(list(geojson.utils.coords(f)))
+            self._update_bounds(coords[:, 1], coords[:, 0])
         return self
 
     def show(self) -&gt; object:
@@ -455,6 +637,7 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
 
     Args:
         aois (DataFrame): The aois to display on the map
+
     Returns:
         self, for chaining
     &#34;&#34;&#34;
@@ -479,7 +662,7 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
 </details>
 </dd>
 <dt id="reportlib.maps.AtomMap.add_aois_perf"><code class="name flex">
-<span>def <span class="ident">add_aois_perf</span></span>(<span>self, df)</span>
+<span>def <span class="ident">add_aois_perf</span></span>(<span>self, df: pandas.core.frame.DataFrame, ctr_color_offset: int = 0, markers_size_range: list = [10, 25])</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Add a layer showing performance per AOI, color represents clickthrough rate and size impressions volume</p>
@@ -487,6 +670,11 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
 <dl>
 <dt><strong><code>df</code></strong> :&ensp;<code>DataFrame</code></dt>
 <dd>The performance data, must have a geohash column to locate the aois</dd>
+<dt><strong><code>ctr_color_offset</code></strong> :&ensp;<code>int</code></dt>
+<dd><em>optional</em>, by how much to offset the lower bound of the ctr range, will make</dd>
+<dt>all markers greener</dt>
+<dt><strong><code>markers_size_range</code></strong> :&ensp;<code>[int, int]</code></dt>
+<dd><em>optional</em>, the range of marker size</dd>
 </dl>
 <h2 id="returns">Returns</h2>
 <p>self, for chaining</p></div>
@@ -496,13 +684,19 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
 </summary>
 <pre><code class="python">def add_aois_perf(
     self,
-    df,
+    df: pd.DataFrame,
+    ctr_color_offset: int = 0,
+    markers_size_range: list = [10, 25],
 ):
     &#34;&#34;&#34;
     Add a layer showing performance per AOI, color represents clickthrough rate and size impressions volume
 
     Args:
         df (DataFrame): The performance data, must have a geohash column to locate the aois
+        ctr_color_offset (int): *optional*, by how much to offset the lower bound of the ctr range, will make
+        all markers greener
+        markers_size_range ([int, int]): *optional*, the range of marker size
+
     Returns:
         self, for chaining
     &#34;&#34;&#34;
@@ -517,16 +711,25 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
     maxctr = perf[&#34;ctr_perc&#34;].max()
 
     # Print ctr and impressions range
-    print(&#34;ctr:&#34;, minctr, &#34;-&#34;, maxctr)
-    print(&#34;impressions:&#34;, perf[&#34;impressions&#34;].min(), &#34;-&#34;, perf[&#34;impressions&#34;].max())
+    print(&#34;ctr range for color:&#34;, minctr - ctr_color_offset, &#34;-&#34;, maxctr)
+    print(
+        &#34;impressions range:&#34;,
+        perf[&#34;impressions&#34;].min(),
+        &#34;-&#34;,
+        perf[&#34;impressions&#34;].max(),
+    )
 
     def linmap(v, mn, mx, mn_to=0, mx_to=1):
         return (v - mn) / (mx - mn) * (mx_to - mn_to) + mn_to
 
     colormap = cm.LinearColormap(
         colors=[&#34;#F5A331&#34;, &#34;#F5E214&#34;, &#34;#35CC3F&#34;],
-        index=[minctr - 0.15, (minctr - 0.15 + maxctr) / 2, maxctr],
-        vmin=minctr - 0.15,
+        index=[
+            minctr - ctr_color_offset,
+            (minctr - ctr_color_offset + maxctr) / 2,
+            maxctr,
+        ],
+        vmin=minctr - ctr_color_offset,
         vmax=maxctr,
     )
 
@@ -548,8 +751,8 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
             aoi[&#34;impressions&#34;],
             perf[&#34;impressions&#34;].min(),
             perf[&#34;impressions&#34;].max(),
-            mn_to=10,
-            mx_to=25,
+            mn_to=markers_size_range[0],
+            mx_to=markers_size_range[1],
         )
         intensity = aoi[&#34;ctr_perc&#34;]
         self.fmap.add_child(marker(aoi[&#34;geohash&#34;], size, intensity))
@@ -559,6 +762,136 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
         list(perf[&#34;geohash&#34;].apply(lambda g: pygeohash.decode(g)))
     )
     self._update_bounds(aoi_centroids[:, 0], aoi_centroids[:, 1])
+    return self</code></pre>
+</details>
+</dd>
+<dt id="reportlib.maps.AtomMap.add_geojson"><code class="name flex">
+<span>def <span class="ident">add_geojson</span></span>(<span>self, obj: <module 'json' from '/Library/Frameworks/Python.framework/Versions/3.7/lib/python3.7/json/__init__.py'>, color: <a title="reportlib.utils.Color" href="utils.html#reportlib.utils.Color">Color</a> = Color.BLUE)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Add a layer with geojson file</p>
+<p>! geojson polygons must follow the <strong>right-hand rule</strong> (counter-clockwise) !</p>
+<p>! geojson format uses <strong>(longitude, latitude)</strong> in that order !</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>obj</code></strong> :&ensp;<code>json</code></dt>
+<dd>The geojson object</dd>
+</dl>
+<p>color (<code><a title="reportlib.utils.Color" href="utils.html#reportlib.utils.Color">Color</a></code>): <em>optional</em>, color of the geojson features</p>
+<h2 id="returns">Returns</h2>
+<p>self, for chaining</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def add_geojson(self, obj: json, color: Color = Color.BLUE):
+    &#34;&#34;&#34;
+    Add a layer with geojson file
+
+    ! geojson polygons must follow the **right-hand rule** (counter-clockwise) !
+
+    ! geojson format uses **(longitude, latitude)** in that order !
+
+    Args:
+        obj (json): The geojson object
+        color (`reportlib.utils.Color`): *optional*, color of the geojson features
+
+    Returns:
+        self, for chaining
+    &#34;&#34;&#34;
+    geo = folium.GeoJson(
+        obj,
+        name=&#34;blah&#34;,
+        style_function=lambda x: {
+            &#34;fillColor&#34;: color.value,
+            &#34;color&#34;: color.value,
+            &#34;fillOpacity&#34;: 0.1,
+        },
+    )
+    self.fmap.add_child(geo)
+
+    # update bounds
+    for f in obj[&#34;features&#34;]:
+        coords = np.array(list(geojson.utils.coords(f)))
+        self._update_bounds(coords[:, 1], coords[:, 0])
+    return self</code></pre>
+</details>
+</dd>
+<dt id="reportlib.maps.AtomMap.add_points"><code class="name flex">
+<span>def <span class="ident">add_points</span></span>(<span>self, df: pandas.core.frame.DataFrame, lat: str = 'latitude', lon: str = 'longitude', color: <a title="reportlib.utils.Color" href="utils.html#reportlib.utils.Color">Color</a> = Color.BLUE, rad: int = 1, plot_max: int = 20000)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Add a layer showing points from a dataframe</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>df</code></strong> :&ensp;<code>DataFrame</code></dt>
+<dd>The input data</dd>
+<dt><strong><code>lat</code></strong> :&ensp;<code>str</code></dt>
+<dd><em>optional</em>, name of the column containing latitudes</dd>
+<dt><strong><code>lon</code></strong> :&ensp;<code>str</code></dt>
+<dd><em>optional</em>, name of the column containing longitudes</dd>
+<dt><strong><code>color</code></strong> :&ensp;<code>int</code></dt>
+<dd><em>optional</em>, color of the points</dd>
+<dt><strong><code>rad</code></strong> :&ensp;<code>int</code></dt>
+<dd><em>optional</em>, size of the points</dd>
+<dt><strong><code>plot_max</code></strong> :&ensp;<code>int</code></dt>
+<dd><em>optional</em>, cap on the number of points to print, sampled randomly if exceeded</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<p>self, for chaining</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def add_points(
+    self,
+    df: pd.DataFrame,
+    lat: str = &#34;latitude&#34;,
+    lon: str = &#34;longitude&#34;,
+    color: Color = Color.BLUE,
+    rad: int = 1,
+    plot_max: int = 20000,
+):
+    &#34;&#34;&#34;
+    Add a layer showing points from a dataframe
+
+    Args:
+        df (DataFrame): The input data
+        lat (str): *optional*, name of the column containing latitudes
+        lon (str): *optional*, name of the column containing longitudes
+        color (int): *optional*, color of the points
+        rad (int): *optional*, size of the points
+        plot_max (int): *optional*, cap on the number of points to print, sampled randomly if exceeded
+
+    Returns:
+        self, for chaining
+    &#34;&#34;&#34;
+    assert (
+        lat in df.columns and lon in df.columns
+    ), &#34;lat/lon not found, check dataframe or use lat and lon paramaters&#34;
+    df = df.dropna(subset=[lat, lon])
+
+    # apply plot_max cap
+    if len(df) &gt; plot_max:
+        print(&#34;df has&#34;, len(df), &#34;rows, capping at&#34;, plot_max, &#34;!&#34;)
+        df = df.sample(plot_max)
+    else:
+        df = df
+
+    # add points to the map
+    df.apply(
+        lambda row: folium.CircleMarker(
+            [row[lat], row[lon]],
+            radius=rad,
+            color=color.value,
+            fill=True,
+            fill_opacity=1,
+            opacity=1,
+        ).add_to(self.fmap),
+        axis=1,
+    )
+
+    self._update_bounds(df[lat], df[lon])
     return self</code></pre>
 </details>
 </dd>
@@ -667,18 +1000,15 @@ access_token=pk.eyJ1IjoiZ2FzcGFyZGZldXZyYXkiLCJhIjoiY2p2YzdhMHZzMWZyMzN5bWo3dTUw
 <li><code><a title="reportlib" href="index.html">reportlib</a></code></li>
 </ul>
 </li>
-<li><h3><a href="#header-functions">Functions</a></h3>
-<ul class="">
-<li><code><a title="reportlib.maps.create_map" href="#reportlib.maps.create_map">create_map</a></code></li>
-</ul>
-</li>
 <li><h3><a href="#header-classes">Classes</a></h3>
 <ul>
 <li>
 <h4><code><a title="reportlib.maps.AtomMap" href="#reportlib.maps.AtomMap">AtomMap</a></code></h4>
-<ul class="">
+<ul class="two-column">
 <li><code><a title="reportlib.maps.AtomMap.add_aois" href="#reportlib.maps.AtomMap.add_aois">add_aois</a></code></li>
 <li><code><a title="reportlib.maps.AtomMap.add_aois_perf" href="#reportlib.maps.AtomMap.add_aois_perf">add_aois_perf</a></code></li>
+<li><code><a title="reportlib.maps.AtomMap.add_geojson" href="#reportlib.maps.AtomMap.add_geojson">add_geojson</a></code></li>
+<li><code><a title="reportlib.maps.AtomMap.add_points" href="#reportlib.maps.AtomMap.add_points">add_points</a></code></li>
 <li><code><a title="reportlib.maps.AtomMap.save" href="#reportlib.maps.AtomMap.save">save</a></code></li>
 <li><code><a title="reportlib.maps.AtomMap.show" href="#reportlib.maps.AtomMap.show">show</a></code></li>
 </ul>
