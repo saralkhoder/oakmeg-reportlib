@@ -4,7 +4,7 @@ import webbrowser
 from enum import Enum
 
 
-class Colors(Enum):
+class Color(Enum):
     LIGHTGREY = "#D0D6D9"
     BLUE = "#636EFA"
     LIGHTBLUE = "#55BDFF"

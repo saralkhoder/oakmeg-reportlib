@@ -1,17 +1,19 @@
 """Module for creating Atom maps"""
 import io
+import json
 from pathlib import Path
-
 from enum import Enum
+
 import pandas as pd
 import numpy as np
 import pygeohash
+import geojson
 from PIL import Image
 import folium
 from folium import plugins
 from branca import colormap as cm
 
-from reportlib.utils import Colors
+from reportlib.utils import Color
 
 
 class Tile(Enum):
@@ -23,7 +25,7 @@ access_token=pk.eyJ1IjoiZ2FzcGFyZGZldXZyYXkiLCJhIjoiY2p2YzdhMHZzMWZyMzN5bWo3dTUw
 
 
 class _Palette(Enum):
-    AOI = Colors.BLUE.value
+    AOI = Color.BLUE.value
 
 
 class AtomMap:
@@ -36,13 +38,12 @@ class AtomMap:
     """
 
     def __init__(self, tile: Tile):
-        self.fmap = create_map(tile)
+        self.fmap = _create_map(tile)
         self.layers = []
         self.bounds = {"sw": [], "ne": []}
 
         # Init map
-        self.fmap.add_child(folium.LayerControl())
-        self.fmap.add_child(folium.plugins.MeasureControl(primary_length_unit="meters"))
+        # self.fmap.add_child(folium.LayerControl())
 
     def _update_bounds(self, lat: list, lon: list) -> object:
         """
@@ -70,6 +71,7 @@ class AtomMap:
 
         Args:
             aois (DataFrame): The aois to display on the map
+
         Returns:
             self, for chaining
         """
@@ -107,6 +109,7 @@ class AtomMap:
             ctr_color_offset (int): *optional*, by how much to offset the lower bound of the ctr range, will make
             all markers greener
             markers_size_range ([int, int]): *optional*, the range of marker size
+
         Returns:
             self, for chaining
         """
@@ -122,7 +125,12 @@ class AtomMap:
 
         # Print ctr and impressions range
         print("ctr range for color:", minctr - ctr_color_offset, "-", maxctr)
-        print("impressions range:", perf["impressions"].min(), "-", perf["impressions"].max())
+        print(
+            "impressions range:",
+            perf["impressions"].min(),
+            "-",
+            perf["impressions"].max(),
+        )
 
         def linmap(v, mn, mx, mn_to=0, mx_to=1):
             return (v - mn) / (mx - mn) * (mx_to - mn_to) + mn_to
@@ -174,10 +182,24 @@ class AtomMap:
         df: pd.DataFrame,
         lat: str = "latitude",
         lon: str = "longitude",
-        color: Colors = Colors.BLUE,
+        color: Color = Color.BLUE,
         rad: int = 1,
         plot_max: int = 20000,
     ):
+        """
+        Add a layer showing points from a dataframe
+
+        Args:
+            df (DataFrame): The input data
+            lat (str): *optional*, name of the column containing latitudes
+            lon (str): *optional*, name of the column containing longitudes
+            color (int): *optional*, color of the points
+            rad (int): *optional*, size of the points
+            plot_max (int): *optional*, cap on the number of points to print, sampled randomly if exceeded
+
+        Returns:
+            self, for chaining
+        """
         assert (
             lat in df.columns and lon in df.columns
         ), "lat/lon not found, check dataframe or use lat and lon paramaters"
@@ -206,6 +228,38 @@ class AtomMap:
         self._update_bounds(df[lat], df[lon])
         return self
 
+    def add_geojson(self, obj: json, color: Color = Color.BLUE):
+        """
+        Add a layer with geojson file
+
+        ! geojson polygons must follow the **right-hand rule** (counter-clockwise) !
+
+        ! geojson format uses **(longitude, latitude)** in that order !
+
+        Args:
+            obj (json): The geojson object
+            color (`reportlib.utils.Color`): *optional*, color of the geojson features
+
+        Returns:
+            self, for chaining
+        """
+        geo = folium.GeoJson(
+            obj,
+            name="blah",
+            style_function=lambda x: {
+                "fillColor": color.value,
+                "color": color.value,
+                "fillOpacity": 0.1,
+            },
+        )
+        self.fmap.add_child(geo)
+
+        # update bounds
+        for f in obj["features"]:
+            coords = np.array(list(geojson.utils.coords(f)))
+            self._update_bounds(coords[:, 1], coords[:, 0])
+        return self
+
     def show(self) -> object:
         """
         Display the map
@@ -230,7 +284,7 @@ class AtomMap:
         return self.fmap
 
 
-def create_map(tile: Tile) -> folium.Map:
+def _create_map(tile: Tile) -> folium.Map:
     return folium.Map(tiles=None).add_child(
         folium.TileLayer(tile.value, name="base_map", attr="atom")
     )

@@ -5,14 +5,14 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from reportlib.utils import Colors
+from reportlib.utils import Color
 from reportlib._plotly_utils import save_fig_to, M0_LAYOUT, DEFAULT_LAYOUT
 
 
 class _Palette(Enum):
-    IMPRESSIONS = Colors.BLUE.value
-    REACH = Colors.LIGHTBLUE.value
-    CTR = Colors.GREEN.value
+    IMPRESSIONS = Color.BLUE.value
+    REACH = Color.LIGHTBLUE.value
+    CTR = Color.GREEN.value
 
 
 def plot_by(
