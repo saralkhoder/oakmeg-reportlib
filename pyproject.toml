@@ -17,6 +17,7 @@ psutil = "^5.8.0"
 python-pptx = "^0.6.19"
 pycountry = "^20.7.3"
 haversine = "^2.4.0"
+PyYAML = "^5.4.1"
 
 [tool.poetry.dev-dependencies]
 pdoc3 = "^0.10.0"
