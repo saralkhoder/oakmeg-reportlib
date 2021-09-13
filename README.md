@@ -6,6 +6,8 @@ Install the oakmeg **reportlib** package
 pip install git+ssh://git@github.com/MCS-Atom/oakmeg-reportlib.git
 ```
 
+*If you have not switched to SSH authentication yet, follow [this page](https://docs.github.com/en/github/authenticating-to-github/connecting-to-github-with-ssh) first*
+
 ## Usage
 Import and open documentation
 ```python
@@ -37,4 +39,23 @@ Display **daily impressions and CTR**
 performance.plot_by(data.dash, 'date_served')
 ```
 
-Look in the documentation for a full list of functionalities.
+Look in the documentation for a full list of functionalities !
+
+## Contributing
+```bash
+git clone git@github.com:MCS-Atom/oakmeg-reportlib.git
+```
+
+Create new branch (master is protected)
+```bash
+git checkout -b new_branch_name
+```
+
+Create and push one commit for each feature
+```bash
+git add file1 file2 file3
+git commit -m 'blahblah'
+git push
+```
+
+Create a pull request for this branch and submit code for review.
