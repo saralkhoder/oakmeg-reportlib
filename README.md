@@ -21,6 +21,15 @@ data = datamodule.Data('path-to-secrets.yaml', 'NT28')
 data.load_all()
 ```
 
+```yaml
+rds:
+  dbuser: <usr>
+  dbpassword: <pwd>
+  dbhost: 'hazel-db.c6onygznvltd.us-east-1.rds.amazonaws.com'
+  dbport: 5432
+  dbdatabase: postgres
+```
+
 Display **targeting map**
 ```python
 maps.AtomMap(maps.Tile.TERRAIN).add_aois(data.aois).show()
