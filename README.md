@@ -36,17 +36,19 @@ Display **targeting map**
 maps.AtomMap(maps.Tile.TERRAIN).add_aois(data.aois).show()
 ```
 
-Compute **overall performance** and **performance by AOI**
+Compute campaign **overall performance**
 ```python
 performance.overview(data.dash)
-```
-```python
-performance.overview(data.dash, by='aoi')
 ```
 
 Display **daily impressions and CTR**
 ```python
 performance.plot_by(data.dash, 'date_served')
+```
+
+Save performance per aoi as a **PowerPoint table**
+```python
+ppt.save_as_table(performance.overview(data.dash, by='aoi'), to='perf_by_aoi')
 ```
 
 Look in the documentation for a full list of functionalities !
