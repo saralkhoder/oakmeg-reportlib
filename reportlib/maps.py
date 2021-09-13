@@ -17,6 +17,9 @@ from reportlib.utils import Color
 
 
 class Tile(Enum):
+    """
+    Available base tiles for `reportlib.maps.AtomMap`
+    """
     TERRAIN = "Stamen Terrain"
     STREETS = "https://api.mapbox.com/styles/v1/gaspardfeuvray/ckpofztgc08ys17mlpwabqxhz/tiles/256/{z}/{x}/{y}@2x?\
 access_token=pk.eyJ1IjoiZ2FzcGFyZGZldXZyYXkiLCJhIjoiY2p2YzdhMHZzMWZyMzN5bWo3dTUwY2UxcSJ9.MwgCkS-8xqvM9wjQI-vjgw"
@@ -88,7 +91,7 @@ class AtomMap:
                 popup=popup,
                 fill_color=_Palette.AOI.value,
                 color=_Palette.AOI.value,
-                opacity=0.3,
+                opacity=0.5
             ).add_to(self.fmap)
 
         self._update_bounds(aois["latitude"], aois["longitude"])
@@ -183,8 +186,8 @@ class AtomMap:
         lat: str = "latitude",
         lon: str = "longitude",
         color: Color = Color.BLUE,
-        rad: int = 1,
-        plot_max: int = 20000,
+        size: int = 1,
+        plot_max: int = 10000,
     ):
         """
         Add a layer showing points from a dataframe
@@ -193,13 +196,16 @@ class AtomMap:
             df (DataFrame): The input data
             lat (str): *optional*, name of the column containing latitudes
             lon (str): *optional*, name of the column containing longitudes
-            color (int): *optional*, color of the points
-            rad (int): *optional*, size of the points
+            color (`reportlib.utils.Color`): *optional*, color of the points
+            size (int): *optional*, size of the points
             plot_max (int): *optional*, cap on the number of points to print, sampled randomly if exceeded
 
         Returns:
             self, for chaining
         """
+        if df.empty:
+            return self
+
         assert (
             lat in df.columns and lon in df.columns
         ), "lat/lon not found, check dataframe or use lat and lon paramaters"
@@ -210,22 +216,65 @@ class AtomMap:
             print("df has", len(df), "rows, capping at", plot_max, "!")
             df = df.sample(plot_max)
         else:
+            print(len(df), "points added")
             df = df
 
         # add points to the map
         df.apply(
             lambda row: folium.CircleMarker(
                 [row[lat], row[lon]],
-                radius=rad,
+                radius=size,
                 color=color.value,
                 fill=True,
                 fill_opacity=1,
                 opacity=1,
+                popup=folium.Popup(
+                    html=f"MAID: {row['mobile_id']}, LAT/LON: {row[lat]}, {row[lon]}, {row['date_served']}",
+                    max_width=620
+                ),  # TODO: remove {row['device id']}
             ).add_to(self.fmap),
             axis=1,
         )
 
-        self._update_bounds(df[lat], df[lon])
+        if not df.empty:
+            self._update_bounds(df[lat], df[lon])
+        return self
+
+    def add_heatmap(
+        self,
+        df,
+        lat="latitude",
+        lon="longitude",
+        radius=15,
+        plot_max=200000,
+        save_to="",
+    ):
+        """
+        TODO: docstring
+        """
+        if len(df) > plot_max:
+            df = df.sample(plot_max)
+
+        print("added", len(df), "points to heatmap")
+
+        heat_data = df.dropna(subset=[lat, lon], axis=0)
+
+        sw = heat_data[[lat, lon]].min().values.tolist()
+        ne = heat_data[[lat, lon]].max().values.tolist()
+
+        heat_data = [[row[lat], row[lon]] for index, row in heat_data.iterrows()]
+
+        # self.fmap.add_child(folium.LayerControl())
+
+        self.fmap.add_child(plugins.HeatMap(heat_data, radius=radius, control=False))
+        # self.fmap.add_child(
+        #    folium.plugins.MeasureControl(
+        #        position="topright", primary_length_unit="meters"
+        #    )
+        # )
+
+        if not df.empty:
+            self._update_bounds(df[lat], df[lon])
         return self
 
     def add_geojson(self, obj: json, color: Color = Color.BLUE):
@@ -243,6 +292,15 @@ class AtomMap:
         Returns:
             self, for chaining
         """
+        # handle case
+        if not obj:
+            print("None passed as geojson object")
+            return self
+
+        if "features" in obj and len(obj["features"]) == 0:
+            print("Empty geojson")
+            return self
+
         geo = folium.GeoJson(
             obj,
             name="blah",
@@ -255,8 +313,12 @@ class AtomMap:
         self.fmap.add_child(geo)
 
         # update bounds
-        for f in obj["features"]:
-            coords = np.array(list(geojson.utils.coords(f)))
+        if "features" in obj:
+            for f in obj["features"]:
+                coords = np.array(list(geojson.utils.coords(f)))
+                self._update_bounds(coords[:, 1], coords[:, 0])
+        else:
+            coords = np.array(list(geojson.utils.coords(obj)))
             self._update_bounds(coords[:, 1], coords[:, 0])
         return self
 
@@ -270,18 +332,19 @@ class AtomMap:
         self.fmap.fit_bounds([self.bounds["sw"], self.bounds["ne"]])
         return self.fmap
 
-    def save(self, to: str) -> object:
+    def save(self, to: str, html=False) -> object:
         """
         Save the map in a generated folder
 
         Args:
             to (str): the new file name, without extension
+            html (bool): *optional*, wether to save the map as an html file
 
         Returns:
             self, for chaining
         """
-        _save_map(self.fmap, to=to)
-        return self.fmap
+        _save_map(self.fmap, to=to, html=html)
+        return self
 
 
 def _create_map(tile: Tile) -> folium.Map:
@@ -290,18 +353,23 @@ def _create_map(tile: Tile) -> folium.Map:
     )
 
 
-def _save_map(fmap: folium.Map, to: str) -> None:
+def _save_map(fmap: folium.Map, to: str, html=False) -> None:
     """
     Save the map in a generated folder. Note that the process takes ~5 seconds
 
     Args:
         fmap (folium.Map): the map to save
         to (str): *optional*, the new file name, without extension
+        html (bool): *optional*, wether to save the map as an html file
 
     Returns:
         The created folium map
     """
     Path("generated").mkdir(parents=True, exist_ok=True)
-    img_data = fmap._to_png(5)
-    img = Image.open(io.BytesIO(img_data))
-    img.save("generated/" + to + ".png")
+
+    if html:
+        fmap.save("generated/" + to + '.html')
+    else:
+        img_data = fmap._to_png(5)
+        img = Image.open(io.BytesIO(img_data))
+        img.save("generated/" + to + ".png")
