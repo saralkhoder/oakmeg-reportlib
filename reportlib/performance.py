@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from reportlib.utils import Color
-from reportlib._plotly_utils import save_fig_to, M0_LAYOUT, DEFAULT_LAYOUT
+from reportlib._plotly_utils import save_fig_to, M0_LAYOUT
 
 
 class _Palette(Enum):

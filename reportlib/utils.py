@@ -6,11 +6,35 @@ from enum import Enum
 
 class Color(Enum):
     LIGHTGREY = "#D0D6D9"
+    GREY = "#9E9E9E"
+    DARKGREY = "#5E5E5E"
     BLUE = "#636EFA"
     LIGHTBLUE = "#55BDFF"
-    ORANGE = "#F2C11F"
+    YELLOW = "#F2C11F"
+    DARKYELLOW = "#DB9A00"
+    ORANGE = "#F08935"
     GREEN = "#5DBD48"
     PINK = "#DE89FA"
+
+
+PALETTE = [
+    Color.BLUE.value,
+    Color.YELLOW.value,
+    Color.GREEN.value,
+    Color.LIGHTGREY.value,
+]
+
+PALETTE_BINARY = [
+    Color.ORANGE.value,
+    Color.GREEN.value,
+]
+
+PALETTE_SHADES = [
+    Color.DARKYELLOW.value,
+    Color.YELLOW.value,
+    Color.BLUE.value,
+    Color.LIGHTBLUE.value
+]
 
 
 def open_documentation():

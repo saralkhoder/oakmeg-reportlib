@@ -5,15 +5,15 @@ import plotly.io as pio
 
 M0_LAYOUT = {"margin": dict(t=0, b=0, l=0, r=0)}
 
-DEFAULT_LAYOUT = {"font_family": "AppleGothic"}
-
 TRANSPARENT_LAYOUT = {"paper_bgcolor": "rgba(0,0,0,0)", "plot_bgcolor": "rgba(0,0,0,0)"}
 
 
 # Set default style for all plotly figures
 def use_atom_style():
     pio.templates["atom"] = go.layout.Template(
-        layout=go.Layout(font_family="AppleGothic", plot_bgcolor="#F0F4FA")
+        layout=go.Layout(
+            font_family="AppleGothic", font_size=14, plot_bgcolor="#F0F4FA"
+        )
     )
     pio.templates.default = "plotly+atom"
 
