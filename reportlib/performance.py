@@ -15,12 +15,51 @@ class _Palette(Enum):
     CTR = Color.GREEN.value
 
 
+def overview(
+    df: pd.DataFrame,
+    by: str = None
+):
+    """
+    Compute **impressions**, **ctr** and **reach** (if available), aggregated or broken down
+
+    Usage:
+        ``performance.overview(data.dash, by='aoi')``
+
+    Args:
+        df (DataFrame): input data, can be exploded or already aggregated
+        by (str): *optional*, the column name to break down by
+    """
+    has_reach = "mobile_id" in df
+
+    if not by:
+        result = df[['impressions', 'clicks']].sum()
+        result['ctr'] = result['clicks'] / result['impressions']
+        if has_reach:
+            result['reach'] = result['mobile_id'].nunique()
+
+        return result
+
+    else:
+        # only add reach if MAIDs are available and with_reach is True
+        grouped = df.groupby([by], as_index=False, dropna=False).agg(
+            {
+                **{"impressions": "sum"},
+                **({"clicks": "sum"} if "clicks" in df else dict()),
+                **({"mobile_id": lambda x: x.nunique()} if has_reach else dict()),
+            }
+        )
+        if "clicks" in df:
+            grouped["ctr"] = grouped["clicks"] / grouped["impressions"]
+
+        return grouped
+
+
 def plot_by(
     df: pd.DataFrame,
     column: str,
     with_reach: bool = True,
     min_impressions: int = 20,
-    size: list = [750, 350],
+    size: list = [750, 400],
     sort_by: str = None,
     legend_position: str = "left",
     save_to: str = None,
@@ -47,20 +86,20 @@ def plot_by(
         figure (plotly.graph_object.Figure)
     """
     is_time_graph = column == "date_served"
+    has_clicks = "clicks" in df
 
     with_reach = with_reach and "mobile_id" in df
 
     # only add reach if MAIDs are available and with_reach is True
     grouped = df.groupby([column], as_index=False, dropna=False).agg(
         {
-            **{
-                "impressions": "sum",
-                "clicks": "sum",
-            },
+            **{"impressions": "sum"},
+            **({"clicks": "sum"} if has_clicks else dict()),
             **({"mobile_id": lambda x: x.nunique()} if with_reach else dict()),
         }
     )
-    grouped["ctr"] = grouped["clicks"] / grouped["impressions"]
+    if has_clicks:
+        grouped["ctr"] = grouped["clicks"] / grouped["impressions"]
 
     if not is_time_graph and sort_by:
         grouped = grouped.sort_values(sort_by, ascending=False)
@@ -70,7 +109,7 @@ def plot_by(
 
     fig = make_subplots(
         specs=[[{"secondary_y": True}]],
-        figure=go.Figure(layout={**DEFAULT_LAYOUT, **M0_LAYOUT}),
+        figure=go.Figure(layout=M0_LAYOUT),
     )
 
     w_basis = np.asarray([1000 * 3600 * 19] * len(grouped[column]))
@@ -101,27 +140,28 @@ def plot_by(
         )
 
     # CTR
-    fig.add_trace(
-        go.Scatter(
-            x=grouped[column],
-            y=grouped["ctr"],
-            name="CTR",
-            marker=dict(size=8)
-            if is_time_graph
-            else dict(
-                size=18, symbol="line-ew", line=dict(color=_Palette.CTR.value, width=6)
+    if has_clicks:
+        fig.add_trace(
+            go.Scatter(
+                x=grouped[column],
+                y=grouped["ctr"],
+                name="CTR",
+                marker=dict(size=8)
+                if is_time_graph
+                else dict(
+                    size=18, symbol="line-ew", line=dict(color=_Palette.CTR.value, width=6)
+                ),
+                marker_color=_Palette.CTR.value,
+                mode="lines+markers" if is_time_graph else "markers",
+                line_shape="spline",
             ),
-            marker_color=_Palette.CTR.value,
-            mode="lines+markers" if is_time_graph else "markers",
-            line_shape="spline",
-        ),
-        secondary_y=True,
-    )
+            secondary_y=True,
+        )
 
     # Adjust layout
     fig.update_layout(
         yaxis=dict(tickformat="s"),
-        yaxis2=dict(tickformat="0.2%", range=[0, grouped["ctr"].max() * 1.5]),
+        yaxis2=dict(tickformat="0.2%", range=[0, grouped["ctr"].max() * 1.5]) if has_clicks else dict(),
         xaxis=dict(tickformat="%b %d", tickmode="auto"),
         legend=dict(
             yanchor="top",
