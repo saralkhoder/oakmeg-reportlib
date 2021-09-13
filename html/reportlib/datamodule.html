@@ -29,6 +29,7 @@
 </summary>
 <pre><code class="python">&#34;&#34;&#34;Module for downloading Atom data&#34;&#34;&#34;
 import io
+import os
 import re
 
 import yaml
@@ -76,11 +77,16 @@ class DbConnection:
         copy_sql = &#34;COPY ({query}) TO STDOUT WITH CSV {head}&#34;.format(
             query=querystring, head=&#34;HEADER&#34;
         )
-        cur = self.db_engine.raw_connection().cursor()
+        conn = self.db_engine.raw_connection()
+        cur = conn.cursor()
         store = io.StringIO()
         cur.copy_expert(copy_sql, store)
         store.seek(0)
-        return pd.read_csv(store, low_memory=False)
+        data = pd.read_csv(store, low_memory=False)
+        cur.close()
+        conn.commit()
+        conn.close()
+        return data
 
 
 class Data:
@@ -136,51 +142,17 @@ class Data:
         &#34;&#34;&#34;
         return {&#34;messaging&#34;: [self.campaign_id]}
 
-    def _get_dash_filter(self) -&gt; dict:
+    def _get_dash_mop_adtypes(self) -&gt; dict:
         &#34;&#34;&#34;
-        Get dash_table filter for campaign
+        Get adtypes for given campaign
         &#34;&#34;&#34;
-        if &#34;NT&#34; in self.campaign_id:
-            project_id = &#34;Nutmeg - PRO-12767&#34;
-        elif &#34;OT&#34; in self.campaign_id:
-            project_id = &#34;Oak - PRO-12766&#34;
-        else:
-            raise AssertionError(&#34;Unrecognized campaign ID, should be NTXX or OTXX&#34;)
-        data = self.db.query(
+        adtypes = self.db.query(
             f&#34;&#34;&#34;
-            select campaign_name, project from dash_table
-            where campaign_name like &#39;%{self.campaign_id}%&#39;
-            limit 1
+            select distinct adtype from dash_table
+            where adtype like &#39;%{self.campaign_id}%&#39;
             &#34;&#34;&#34;
         )
-        if data.empty:
-            return None
-        else:
-            return {
-                &#34;project&#34;: [data[&#34;project&#34;][0]],
-                &#34;campaign_name&#34;: [data[&#34;campaign_name&#34;][0]],
-            }
-
-    def _get_mop_filter(self) -&gt; dict:
-        &#34;&#34;&#34;
-        Get mop_table filter for campaign
-        &#34;&#34;&#34;
-        data = self.db.query(
-            f&#34;&#34;&#34;
-            select adtype, campaign from mop_table
-            where project = &#39;{self.project_id}&#39;
-            and (adtype like &#39;%{self.campaign_id}%&#39;
-            or campaign like &#39;%{self.campaign_id}%&#39;)
-            limit 1
-            &#34;&#34;&#34;
-        )
-        # Select either adtype or campaign column as filter for that campaign
-        if self.campaign_id in data[&#34;adtype&#34;][0]:
-            return {&#34;project&#34;: [self.project_id], &#34;adtype&#34;: [data[&#34;adtype&#34;][0]]}
-        elif self.campaign_id in data[&#34;campaign&#34;][0]:
-            return {&#34;project&#34;: [self.project_id], &#34;campaign&#34;: [data[&#34;campaign&#34;][0]]}
-        else:
-            return None
+        return &#34;(&#39;&#34; + &#34;&#39;, &#39;&#34;.join(adtypes[&#34;adtype&#34;].to_list()) + &#34;&#39;)&#34;
 
     @staticmethod
     def _extract_message(string: str) -&gt; str:
@@ -209,35 +181,35 @@ class Data:
         &#34;&#34;&#34;
         Load Areas of Interest
         &#34;&#34;&#34;
-        aois_filter = self._get_aois_filter()
-        if filter:
-            aois = self.db.query(
-                f&#34;&#34;&#34;
-                select * from aois 
-                {_where_clause(aois_filter)}
-                &#34;&#34;&#34;
-            )
-            aois[&#34;latitude&#34;] = aois[&#34;latitude&#34;].astype(float)
-            aois[&#34;longitude&#34;] = aois[&#34;longitude&#34;].astype(float)
+        aois = self.db.query(
+            f&#34;&#34;&#34;
+                        select * from aois 
+                        where campaign like &#39;%{self.campaign_id}%&#39;
+                        &#34;&#34;&#34;
+        )
+        if aois.empty:
+            print(f&#34;x NO AOI&#34;)
+            return None
 
-            print(f&#34;- {len(aois)} AOIS found in public.aois&#34;)
-            self.aois = aois
-        else:
-            print(f&#34;x no AOI&#34;)
+        aois[&#34;latitude&#34;] = aois[&#34;latitude&#34;].astype(float)
+        aois[&#34;longitude&#34;] = aois[&#34;longitude&#34;].astype(float)
+
+        print(f&#34;- {len(aois)} AOIS found in public.aois&#34;)
+        self.aois = aois
 
     def load_dash(self) -&gt; None:
         &#34;&#34;&#34;
         Load impressions summary table
         &#34;&#34;&#34;
-        dash_filter = self._get_dash_filter()
+        adtypes = self._get_dash_mop_adtypes()
 
-        if dash_filter:
+        if adtypes:
             dash = self.db.query(
                 f&#34;&#34;&#34;
                 select project, adtype, impressions, clicks, date_served, message, assetid, ad_language,\
-country_code, format
+                country_code, format
                 from dash_table
-                {_where_clause(dash_filter)} 
+                where adtype in {adtypes} 
                 &#34;&#34;&#34;
             )
 
@@ -254,6 +226,14 @@ country_code, format
             dash[&#34;message&#34;] = dash[&#34;message&#34;].apply(self._extract_message)
 
             print(f&#34;- {len(dash)} rows found in public.dash_table&#34;)
+
+            if not dash.empty:
+                print(
+                    &#34;POP:&#34;,
+                    dash[&#34;date_served&#34;].min().strftime(&#34;%Y-%m-%d&#34;),
+                    &#34;-&#34;,
+                    dash[&#34;date_served&#34;].max().strftime(&#34;%Y-%m-%d&#34;),
+                )
             self.dash = dash
         else:
             print(f&#34;x no dash data&#34;)
@@ -261,8 +241,11 @@ country_code, format
     def load_cm360(self, path: str) -&gt; pd.DataFrame:
         &#34;&#34;&#34;
         Load impressions by date from CM360 report file
+
         Report must have at least
+
         - dimensions: Date, Placement
+
         - metrics: Impressions, Clicks
         &#34;&#34;&#34;
         dcm = pd.read_csv(path, skiprows=11)[:-1][
@@ -296,26 +279,77 @@ country_code, format
             axis=1,
         )
 
+    def load_blis_raw(self, path: str, verbose=True):
+        &#34;&#34;&#34;
+        Load impressions from downloaded S3 blis-raw folder
+
+        Pass the path as parameter
+        &#34;&#34;&#34;
+        dataframes = []
+        for f in os.scandir(path.rstrip(&#34;/&#34;)):
+            if f.is_dir():
+                csvpath = f.path + &#34;/data_file_1.csv&#34;
+
+                try:  # Read file and append campaign data
+                    df = pd.read_csv(csvpath)
+                    campaign_df = df[df[&#34;Campaign&#34;].str.contains(self.campaign_id)]
+                    dataframes.append(campaign_df)
+                    if campaign_df.empty and verbose:
+                        print(&#34;no data for&#34;, f.name)
+                    elif verbose:
+                        print(f.name, &#34;loaded!&#34;)
+                except:
+                    if verbose:
+                        print(&#34;no file for&#34;, f.name)
+
+        mop = pd.concat(dataframes, axis=0)
+
+        mop.columns = mop.columns.str.lower()
+        mop = mop.rename(columns={&#34;device id&#34;: &#34;mobile_id&#34;, &#34;date&#34;: &#34;date_served&#34;})
+
+        aoi_exploded = (
+            mop[&#34;placement&#34;]
+            .str.split(&#34; - &#34;, expand=True)
+            .rename(columns={0: &#34;loc&#34;, 1: &#34;aoi&#34;})
+        )
+
+        mop[&#34;mobile_id&#34;] = mop[&#34;mobile_id&#34;].str.lower()
+
+        mop = pd.concat([mop, aoi_exploded], axis=1)
+
+        self.mop = mop
+        print(f&#34;- {len(mop)} impressions found in blis_raw folder&#34;)
+
     def load_mop(self) -&gt; None:
         &#34;&#34;&#34;
         Load full impressions table
         &#34;&#34;&#34;
-        mop_filter = self._get_mop_filter()
+        # TODO (important): fetch from all adtypes as follows:
+        &#34;&#34;&#34;
+        select distinct adtype from dash_table
+        
+        --&gt;
+        select sum(impressions) from mop_table
+        where project = &#39;Nutmeg - PRO-12767&#39; -- Oak - PRO-12766
+        and adtype in (&lt;results from prev step&gt;)
+        &#34;&#34;&#34;
 
-        if mop_filter:
+        adtypes = self._get_dash_mop_adtypes()
+
+        if adtypes:
             mop = self.db.query(
                 f&#34;&#34;&#34;
                 select date_served, impressions, clicks, mobile_id, latitude, longitude, placement, project, assetid, 
                 adtype, hourserved, targeting, message, format, message
-                from mop_table 
-                {_where_clause(mop_filter)}
+                from mop_table
+                where project = &#39;{self.project_id}&#39;
+                and adtype in {adtypes}
                 &#34;&#34;&#34;
             )
 
             if len(mop) == 0:
-                raise KeyError(
-                    &#34;Filtered MOP table is empty. Please check the filters parameters and/or RDS table&#34;
-                )
+                print(&#34;x no mop data&#34;)
+                return None
 
             # dtype changes (reduces size of the dataset)
             cols_to_category = [
@@ -346,32 +380,53 @@ country_code, format
         else:
             print(f&#34;x no dash data&#34;)
 
-    def load_lifesight(self) -&gt; None:
+    def load_lifesight(self, from_manual_maid_table=False) -&gt; None:
         &#34;&#34;&#34;
         Load Patterns of Life data from lifesight
-        &#34;&#34;&#34;
-        # TODO: manual_maids=None (add option to provide MAIDs manually)
-        mop_filter = self._get_mop_filter()
 
-        if mop_filter:
-            # NB: we use lifesight_raw_2 as main lifesight table
+        Args:
+            from_manual_maid_table (bool): wether to load using mop data or to look for MAIDs list in maids_manual table
+        &#34;&#34;&#34;
+        if from_manual_maid_table:
             lifesight = self.db.query(
                 f&#34;&#34;&#34;
                 select *
                 from lifesight_raw_2 lr
-                inner join (select mobile_id from mop_table mt {_where_clause(mop_filter)}) as m 
+                inner join (select mobile_id from maids_manual) as m 
                 on lr.mobile_id = m.mobile_id
                 &#34;&#34;&#34;
-            )
-
-            # Eliminate duplicates
-            lifesight = lifesight.drop_duplicates(subset=[&#34;mobile_id&#34;])
+            ).drop_duplicates(subset=[&#34;mobile_id&#34;])
 
             if not lifesight.empty:
                 print(f&#34;- {len(lifesight)} POL rows found in public.lifesight_raw_2&#34;)
                 self.lifesight = lifesight
+            else:
+                print(&#34;x no maids found in maids_manual from that campaign&#34;)
         else:
-            print(&#34;x need maids from mop to load lifesight data&#34;)
+            adtypes = self._get_dash_mop_adtypes()
+
+            if adtypes:
+                # NB: we use lifesight_raw_2 as main lifesight table
+                lifesight = self.db.query(
+                    f&#34;&#34;&#34;
+                    select *
+                    from lifesight_raw_2 lr
+                    inner join (
+                        select mobile_id from mop_table 
+                        where project = &#39;{self.project_id}&#39; 
+                        and adtype in {adtypes}
+                    ) as m 
+                    on lr.mobile_id = m.mobile_id
+                    &#34;&#34;&#34;
+                ).drop_duplicates(subset=[&#34;mobile_id&#34;])
+
+                if not lifesight.empty:
+                    print(
+                        f&#34;- {len(lifesight)} POL rows found in public.lifesight_raw_2&#34;
+                    )
+                    self.lifesight = lifesight
+            else:
+                print(&#34;x need maids from mop to load lifesight data&#34;)
 
     def load_survey(self) -&gt; None:
         &#34;&#34;&#34;
@@ -515,51 +570,17 @@ def _where_clause(dict_filters):
         &#34;&#34;&#34;
         return {&#34;messaging&#34;: [self.campaign_id]}
 
-    def _get_dash_filter(self) -&gt; dict:
+    def _get_dash_mop_adtypes(self) -&gt; dict:
         &#34;&#34;&#34;
-        Get dash_table filter for campaign
+        Get adtypes for given campaign
         &#34;&#34;&#34;
-        if &#34;NT&#34; in self.campaign_id:
-            project_id = &#34;Nutmeg - PRO-12767&#34;
-        elif &#34;OT&#34; in self.campaign_id:
-            project_id = &#34;Oak - PRO-12766&#34;
-        else:
-            raise AssertionError(&#34;Unrecognized campaign ID, should be NTXX or OTXX&#34;)
-        data = self.db.query(
+        adtypes = self.db.query(
             f&#34;&#34;&#34;
-            select campaign_name, project from dash_table
-            where campaign_name like &#39;%{self.campaign_id}%&#39;
-            limit 1
+            select distinct adtype from dash_table
+            where adtype like &#39;%{self.campaign_id}%&#39;
             &#34;&#34;&#34;
         )
-        if data.empty:
-            return None
-        else:
-            return {
-                &#34;project&#34;: [data[&#34;project&#34;][0]],
-                &#34;campaign_name&#34;: [data[&#34;campaign_name&#34;][0]],
-            }
-
-    def _get_mop_filter(self) -&gt; dict:
-        &#34;&#34;&#34;
-        Get mop_table filter for campaign
-        &#34;&#34;&#34;
-        data = self.db.query(
-            f&#34;&#34;&#34;
-            select adtype, campaign from mop_table
-            where project = &#39;{self.project_id}&#39;
-            and (adtype like &#39;%{self.campaign_id}%&#39;
-            or campaign like &#39;%{self.campaign_id}%&#39;)
-            limit 1
-            &#34;&#34;&#34;
-        )
-        # Select either adtype or campaign column as filter for that campaign
-        if self.campaign_id in data[&#34;adtype&#34;][0]:
-            return {&#34;project&#34;: [self.project_id], &#34;adtype&#34;: [data[&#34;adtype&#34;][0]]}
-        elif self.campaign_id in data[&#34;campaign&#34;][0]:
-            return {&#34;project&#34;: [self.project_id], &#34;campaign&#34;: [data[&#34;campaign&#34;][0]]}
-        else:
-            return None
+        return &#34;(&#39;&#34; + &#34;&#39;, &#39;&#34;.join(adtypes[&#34;adtype&#34;].to_list()) + &#34;&#39;)&#34;
 
     @staticmethod
     def _extract_message(string: str) -&gt; str:
@@ -588,35 +609,35 @@ def _where_clause(dict_filters):
         &#34;&#34;&#34;
         Load Areas of Interest
         &#34;&#34;&#34;
-        aois_filter = self._get_aois_filter()
-        if filter:
-            aois = self.db.query(
-                f&#34;&#34;&#34;
-                select * from aois 
-                {_where_clause(aois_filter)}
-                &#34;&#34;&#34;
-            )
-            aois[&#34;latitude&#34;] = aois[&#34;latitude&#34;].astype(float)
-            aois[&#34;longitude&#34;] = aois[&#34;longitude&#34;].astype(float)
+        aois = self.db.query(
+            f&#34;&#34;&#34;
+                        select * from aois 
+                        where campaign like &#39;%{self.campaign_id}%&#39;
+                        &#34;&#34;&#34;
+        )
+        if aois.empty:
+            print(f&#34;x NO AOI&#34;)
+            return None
 
-            print(f&#34;- {len(aois)} AOIS found in public.aois&#34;)
-            self.aois = aois
-        else:
-            print(f&#34;x no AOI&#34;)
+        aois[&#34;latitude&#34;] = aois[&#34;latitude&#34;].astype(float)
+        aois[&#34;longitude&#34;] = aois[&#34;longitude&#34;].astype(float)
+
+        print(f&#34;- {len(aois)} AOIS found in public.aois&#34;)
+        self.aois = aois
 
     def load_dash(self) -&gt; None:
         &#34;&#34;&#34;
         Load impressions summary table
         &#34;&#34;&#34;
-        dash_filter = self._get_dash_filter()
+        adtypes = self._get_dash_mop_adtypes()
 
-        if dash_filter:
+        if adtypes:
             dash = self.db.query(
                 f&#34;&#34;&#34;
                 select project, adtype, impressions, clicks, date_served, message, assetid, ad_language,\
-country_code, format
+                country_code, format
                 from dash_table
-                {_where_clause(dash_filter)} 
+                where adtype in {adtypes} 
                 &#34;&#34;&#34;
             )
 
@@ -633,6 +654,14 @@ country_code, format
             dash[&#34;message&#34;] = dash[&#34;message&#34;].apply(self._extract_message)
 
             print(f&#34;- {len(dash)} rows found in public.dash_table&#34;)
+
+            if not dash.empty:
+                print(
+                    &#34;POP:&#34;,
+                    dash[&#34;date_served&#34;].min().strftime(&#34;%Y-%m-%d&#34;),
+                    &#34;-&#34;,
+                    dash[&#34;date_served&#34;].max().strftime(&#34;%Y-%m-%d&#34;),
+                )
             self.dash = dash
         else:
             print(f&#34;x no dash data&#34;)
@@ -640,8 +669,11 @@ country_code, format
     def load_cm360(self, path: str) -&gt; pd.DataFrame:
         &#34;&#34;&#34;
         Load impressions by date from CM360 report file
+
         Report must have at least
+
         - dimensions: Date, Placement
+
         - metrics: Impressions, Clicks
         &#34;&#34;&#34;
         dcm = pd.read_csv(path, skiprows=11)[:-1][
@@ -675,26 +707,77 @@ country_code, format
             axis=1,
         )
 
+    def load_blis_raw(self, path: str, verbose=True):
+        &#34;&#34;&#34;
+        Load impressions from downloaded S3 blis-raw folder
+
+        Pass the path as parameter
+        &#34;&#34;&#34;
+        dataframes = []
+        for f in os.scandir(path.rstrip(&#34;/&#34;)):
+            if f.is_dir():
+                csvpath = f.path + &#34;/data_file_1.csv&#34;
+
+                try:  # Read file and append campaign data
+                    df = pd.read_csv(csvpath)
+                    campaign_df = df[df[&#34;Campaign&#34;].str.contains(self.campaign_id)]
+                    dataframes.append(campaign_df)
+                    if campaign_df.empty and verbose:
+                        print(&#34;no data for&#34;, f.name)
+                    elif verbose:
+                        print(f.name, &#34;loaded!&#34;)
+                except:
+                    if verbose:
+                        print(&#34;no file for&#34;, f.name)
+
+        mop = pd.concat(dataframes, axis=0)
+
+        mop.columns = mop.columns.str.lower()
+        mop = mop.rename(columns={&#34;device id&#34;: &#34;mobile_id&#34;, &#34;date&#34;: &#34;date_served&#34;})
+
+        aoi_exploded = (
+            mop[&#34;placement&#34;]
+            .str.split(&#34; - &#34;, expand=True)
+            .rename(columns={0: &#34;loc&#34;, 1: &#34;aoi&#34;})
+        )
+
+        mop[&#34;mobile_id&#34;] = mop[&#34;mobile_id&#34;].str.lower()
+
+        mop = pd.concat([mop, aoi_exploded], axis=1)
+
+        self.mop = mop
+        print(f&#34;- {len(mop)} impressions found in blis_raw folder&#34;)
+
     def load_mop(self) -&gt; None:
         &#34;&#34;&#34;
         Load full impressions table
         &#34;&#34;&#34;
-        mop_filter = self._get_mop_filter()
+        # TODO (important): fetch from all adtypes as follows:
+        &#34;&#34;&#34;
+        select distinct adtype from dash_table
+        
+        --&gt;
+        select sum(impressions) from mop_table
+        where project = &#39;Nutmeg - PRO-12767&#39; -- Oak - PRO-12766
+        and adtype in (&lt;results from prev step&gt;)
+        &#34;&#34;&#34;
 
-        if mop_filter:
+        adtypes = self._get_dash_mop_adtypes()
+
+        if adtypes:
             mop = self.db.query(
                 f&#34;&#34;&#34;
                 select date_served, impressions, clicks, mobile_id, latitude, longitude, placement, project, assetid, 
                 adtype, hourserved, targeting, message, format, message
-                from mop_table 
-                {_where_clause(mop_filter)}
+                from mop_table
+                where project = &#39;{self.project_id}&#39;
+                and adtype in {adtypes}
                 &#34;&#34;&#34;
             )
 
             if len(mop) == 0:
-                raise KeyError(
-                    &#34;Filtered MOP table is empty. Please check the filters parameters and/or RDS table&#34;
-                )
+                print(&#34;x no mop data&#34;)
+                return None
 
             # dtype changes (reduces size of the dataset)
             cols_to_category = [
@@ -725,32 +808,53 @@ country_code, format
         else:
             print(f&#34;x no dash data&#34;)
 
-    def load_lifesight(self) -&gt; None:
+    def load_lifesight(self, from_manual_maid_table=False) -&gt; None:
         &#34;&#34;&#34;
         Load Patterns of Life data from lifesight
-        &#34;&#34;&#34;
-        # TODO: manual_maids=None (add option to provide MAIDs manually)
-        mop_filter = self._get_mop_filter()
 
-        if mop_filter:
-            # NB: we use lifesight_raw_2 as main lifesight table
+        Args:
+            from_manual_maid_table (bool): wether to load using mop data or to look for MAIDs list in maids_manual table
+        &#34;&#34;&#34;
+        if from_manual_maid_table:
             lifesight = self.db.query(
                 f&#34;&#34;&#34;
                 select *
                 from lifesight_raw_2 lr
-                inner join (select mobile_id from mop_table mt {_where_clause(mop_filter)}) as m 
+                inner join (select mobile_id from maids_manual) as m 
                 on lr.mobile_id = m.mobile_id
                 &#34;&#34;&#34;
-            )
-
-            # Eliminate duplicates
-            lifesight = lifesight.drop_duplicates(subset=[&#34;mobile_id&#34;])
+            ).drop_duplicates(subset=[&#34;mobile_id&#34;])
 
             if not lifesight.empty:
                 print(f&#34;- {len(lifesight)} POL rows found in public.lifesight_raw_2&#34;)
                 self.lifesight = lifesight
+            else:
+                print(&#34;x no maids found in maids_manual from that campaign&#34;)
         else:
-            print(&#34;x need maids from mop to load lifesight data&#34;)
+            adtypes = self._get_dash_mop_adtypes()
+
+            if adtypes:
+                # NB: we use lifesight_raw_2 as main lifesight table
+                lifesight = self.db.query(
+                    f&#34;&#34;&#34;
+                    select *
+                    from lifesight_raw_2 lr
+                    inner join (
+                        select mobile_id from mop_table 
+                        where project = &#39;{self.project_id}&#39; 
+                        and adtype in {adtypes}
+                    ) as m 
+                    on lr.mobile_id = m.mobile_id
+                    &#34;&#34;&#34;
+                ).drop_duplicates(subset=[&#34;mobile_id&#34;])
+
+                if not lifesight.empty:
+                    print(
+                        f&#34;- {len(lifesight)} POL rows found in public.lifesight_raw_2&#34;
+                    )
+                    self.lifesight = lifesight
+            else:
+                print(&#34;x need maids from mop to load lifesight data&#34;)
 
     def load_survey(self) -&gt; None:
         &#34;&#34;&#34;
@@ -827,31 +931,89 @@ country_code, format
     &#34;&#34;&#34;
     Load Areas of Interest
     &#34;&#34;&#34;
-    aois_filter = self._get_aois_filter()
-    if filter:
-        aois = self.db.query(
-            f&#34;&#34;&#34;
-            select * from aois 
-            {_where_clause(aois_filter)}
-            &#34;&#34;&#34;
-        )
-        aois[&#34;latitude&#34;] = aois[&#34;latitude&#34;].astype(float)
-        aois[&#34;longitude&#34;] = aois[&#34;longitude&#34;].astype(float)
+    aois = self.db.query(
+        f&#34;&#34;&#34;
+                    select * from aois 
+                    where campaign like &#39;%{self.campaign_id}%&#39;
+                    &#34;&#34;&#34;
+    )
+    if aois.empty:
+        print(f&#34;x NO AOI&#34;)
+        return None
 
-        print(f&#34;- {len(aois)} AOIS found in public.aois&#34;)
-        self.aois = aois
-    else:
-        print(f&#34;x no AOI&#34;)</code></pre>
+    aois[&#34;latitude&#34;] = aois[&#34;latitude&#34;].astype(float)
+    aois[&#34;longitude&#34;] = aois[&#34;longitude&#34;].astype(float)
+
+    print(f&#34;- {len(aois)} AOIS found in public.aois&#34;)
+    self.aois = aois</code></pre>
+</details>
+</dd>
+<dt id="reportlib.datamodule.Data.load_blis_raw"><code class="name flex">
+<span>def <span class="ident">load_blis_raw</span></span>(<span>self, path: str, verbose=True)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Load impressions from downloaded S3 blis-raw folder</p>
+<p>Pass the path as parameter</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def load_blis_raw(self, path: str, verbose=True):
+    &#34;&#34;&#34;
+    Load impressions from downloaded S3 blis-raw folder
+
+    Pass the path as parameter
+    &#34;&#34;&#34;
+    dataframes = []
+    for f in os.scandir(path.rstrip(&#34;/&#34;)):
+        if f.is_dir():
+            csvpath = f.path + &#34;/data_file_1.csv&#34;
+
+            try:  # Read file and append campaign data
+                df = pd.read_csv(csvpath)
+                campaign_df = df[df[&#34;Campaign&#34;].str.contains(self.campaign_id)]
+                dataframes.append(campaign_df)
+                if campaign_df.empty and verbose:
+                    print(&#34;no data for&#34;, f.name)
+                elif verbose:
+                    print(f.name, &#34;loaded!&#34;)
+            except:
+                if verbose:
+                    print(&#34;no file for&#34;, f.name)
+
+    mop = pd.concat(dataframes, axis=0)
+
+    mop.columns = mop.columns.str.lower()
+    mop = mop.rename(columns={&#34;device id&#34;: &#34;mobile_id&#34;, &#34;date&#34;: &#34;date_served&#34;})
+
+    aoi_exploded = (
+        mop[&#34;placement&#34;]
+        .str.split(&#34; - &#34;, expand=True)
+        .rename(columns={0: &#34;loc&#34;, 1: &#34;aoi&#34;})
+    )
+
+    mop[&#34;mobile_id&#34;] = mop[&#34;mobile_id&#34;].str.lower()
+
+    mop = pd.concat([mop, aoi_exploded], axis=1)
+
+    self.mop = mop
+    print(f&#34;- {len(mop)} impressions found in blis_raw folder&#34;)</code></pre>
 </details>
 </dd>
 <dt id="reportlib.datamodule.Data.load_cm360"><code class="name flex">
 <span>def <span class="ident">load_cm360</span></span>(<span>self, path: str) ‑> pandas.core.frame.DataFrame</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Load impressions by date from CM360 report file
-Report must have at least
-- dimensions: Date, Placement
-- metrics: Impressions, Clicks</p></div>
+<div class="desc"><p>Load impressions by date from CM360 report file</p>
+<p>Report must have at least</p>
+<ul>
+<li>
+<p>dimensions: Date, Placement</p>
+</li>
+<li>
+<p>metrics: Impressions, Clicks</p>
+</li>
+</ul></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -859,8 +1021,11 @@ Report must have at least
 <pre><code class="python">def load_cm360(self, path: str) -&gt; pd.DataFrame:
     &#34;&#34;&#34;
     Load impressions by date from CM360 report file
+
     Report must have at least
+
     - dimensions: Date, Placement
+
     - metrics: Impressions, Clicks
     &#34;&#34;&#34;
     dcm = pd.read_csv(path, skiprows=11)[:-1][
@@ -904,75 +1069,109 @@ Report must have at least
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">    def load_dash(self) -&gt; None:
-        &#34;&#34;&#34;
-        Load impressions summary table
-        &#34;&#34;&#34;
-        dash_filter = self._get_dash_filter()
+<pre><code class="python">def load_dash(self) -&gt; None:
+    &#34;&#34;&#34;
+    Load impressions summary table
+    &#34;&#34;&#34;
+    adtypes = self._get_dash_mop_adtypes()
 
-        if dash_filter:
-            dash = self.db.query(
-                f&#34;&#34;&#34;
-                select project, adtype, impressions, clicks, date_served, message, assetid, ad_language,\
-country_code, format
-                from dash_table
-                {_where_clause(dash_filter)} 
-                &#34;&#34;&#34;
+    if adtypes:
+        dash = self.db.query(
+            f&#34;&#34;&#34;
+            select project, adtype, impressions, clicks, date_served, message, assetid, ad_language,\
+            country_code, format
+            from dash_table
+            where adtype in {adtypes} 
+            &#34;&#34;&#34;
+        )
+
+        # Format dates
+        dash[&#34;date_served&#34;] = pd.to_datetime(dash[&#34;date_served&#34;])
+
+        if not self.aois.empty:
+            dash[&#34;geohash&#34;] = dash[&#34;message&#34;].apply(lambda m: self._extract_aoi(m))
+            dash[&#34;aoi&#34;] = dash[&#34;geohash&#34;].replace(
+                dict(zip(self.aois[&#34;message&#34;].tolist(), self.aois[&#34;name&#34;].tolist()))
             )
-
-            # Format dates
-            dash[&#34;date_served&#34;] = pd.to_datetime(dash[&#34;date_served&#34;])
-
-            if not self.aois.empty:
-                dash[&#34;geohash&#34;] = dash[&#34;message&#34;].apply(lambda m: self._extract_aoi(m))
-                dash[&#34;aoi&#34;] = dash[&#34;geohash&#34;].replace(
-                    dict(zip(self.aois[&#34;message&#34;].tolist(), self.aois[&#34;name&#34;].tolist()))
-                )
-            else:
-                print(&#34;! could not enrich dash data with aoi&#34;)
-            dash[&#34;message&#34;] = dash[&#34;message&#34;].apply(self._extract_message)
-
-            print(f&#34;- {len(dash)} rows found in public.dash_table&#34;)
-            self.dash = dash
         else:
-            print(f&#34;x no dash data&#34;)</code></pre>
+            print(&#34;! could not enrich dash data with aoi&#34;)
+        dash[&#34;message&#34;] = dash[&#34;message&#34;].apply(self._extract_message)
+
+        print(f&#34;- {len(dash)} rows found in public.dash_table&#34;)
+
+        if not dash.empty:
+            print(
+                &#34;POP:&#34;,
+                dash[&#34;date_served&#34;].min().strftime(&#34;%Y-%m-%d&#34;),
+                &#34;-&#34;,
+                dash[&#34;date_served&#34;].max().strftime(&#34;%Y-%m-%d&#34;),
+            )
+        self.dash = dash
+    else:
+        print(f&#34;x no dash data&#34;)</code></pre>
 </details>
 </dd>
 <dt id="reportlib.datamodule.Data.load_lifesight"><code class="name flex">
-<span>def <span class="ident">load_lifesight</span></span>(<span>self) ‑> None</span>
+<span>def <span class="ident">load_lifesight</span></span>(<span>self, from_manual_maid_table=False) ‑> None</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Load Patterns of Life data from lifesight</p></div>
+<div class="desc"><p>Load Patterns of Life data from lifesight</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>from_manual_maid_table</code></strong> :&ensp;<code>bool</code></dt>
+<dd>wether to load using mop data or to look for MAIDs list in maids_manual table</dd>
+</dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def load_lifesight(self) -&gt; None:
+<pre><code class="python">def load_lifesight(self, from_manual_maid_table=False) -&gt; None:
     &#34;&#34;&#34;
     Load Patterns of Life data from lifesight
-    &#34;&#34;&#34;
-    # TODO: manual_maids=None (add option to provide MAIDs manually)
-    mop_filter = self._get_mop_filter()
 
-    if mop_filter:
-        # NB: we use lifesight_raw_2 as main lifesight table
+    Args:
+        from_manual_maid_table (bool): wether to load using mop data or to look for MAIDs list in maids_manual table
+    &#34;&#34;&#34;
+    if from_manual_maid_table:
         lifesight = self.db.query(
             f&#34;&#34;&#34;
             select *
             from lifesight_raw_2 lr
-            inner join (select mobile_id from mop_table mt {_where_clause(mop_filter)}) as m 
+            inner join (select mobile_id from maids_manual) as m 
             on lr.mobile_id = m.mobile_id
             &#34;&#34;&#34;
-        )
-
-        # Eliminate duplicates
-        lifesight = lifesight.drop_duplicates(subset=[&#34;mobile_id&#34;])
+        ).drop_duplicates(subset=[&#34;mobile_id&#34;])
 
         if not lifesight.empty:
             print(f&#34;- {len(lifesight)} POL rows found in public.lifesight_raw_2&#34;)
             self.lifesight = lifesight
+        else:
+            print(&#34;x no maids found in maids_manual from that campaign&#34;)
     else:
-        print(&#34;x need maids from mop to load lifesight data&#34;)</code></pre>
+        adtypes = self._get_dash_mop_adtypes()
+
+        if adtypes:
+            # NB: we use lifesight_raw_2 as main lifesight table
+            lifesight = self.db.query(
+                f&#34;&#34;&#34;
+                select *
+                from lifesight_raw_2 lr
+                inner join (
+                    select mobile_id from mop_table 
+                    where project = &#39;{self.project_id}&#39; 
+                    and adtype in {adtypes}
+                ) as m 
+                on lr.mobile_id = m.mobile_id
+                &#34;&#34;&#34;
+            ).drop_duplicates(subset=[&#34;mobile_id&#34;])
+
+            if not lifesight.empty:
+                print(
+                    f&#34;- {len(lifesight)} POL rows found in public.lifesight_raw_2&#34;
+                )
+                self.lifesight = lifesight
+        else:
+            print(&#34;x need maids from mop to load lifesight data&#34;)</code></pre>
 </details>
 </dd>
 <dt id="reportlib.datamodule.Data.load_mop"><code class="name flex">
@@ -988,22 +1187,32 @@ country_code, format
     &#34;&#34;&#34;
     Load full impressions table
     &#34;&#34;&#34;
-    mop_filter = self._get_mop_filter()
+    # TODO (important): fetch from all adtypes as follows:
+    &#34;&#34;&#34;
+    select distinct adtype from dash_table
+    
+    --&gt;
+    select sum(impressions) from mop_table
+    where project = &#39;Nutmeg - PRO-12767&#39; -- Oak - PRO-12766
+    and adtype in (&lt;results from prev step&gt;)
+    &#34;&#34;&#34;
 
-    if mop_filter:
+    adtypes = self._get_dash_mop_adtypes()
+
+    if adtypes:
         mop = self.db.query(
             f&#34;&#34;&#34;
             select date_served, impressions, clicks, mobile_id, latitude, longitude, placement, project, assetid, 
             adtype, hourserved, targeting, message, format, message
-            from mop_table 
-            {_where_clause(mop_filter)}
+            from mop_table
+            where project = &#39;{self.project_id}&#39;
+            and adtype in {adtypes}
             &#34;&#34;&#34;
         )
 
         if len(mop) == 0:
-            raise KeyError(
-                &#34;Filtered MOP table is empty. Please check the filters parameters and/or RDS table&#34;
-            )
+            print(&#34;x no mop data&#34;)
+            return None
 
         # dtype changes (reduces size of the dataset)
         cols_to_category = [
@@ -1115,11 +1324,16 @@ country_code, format
         copy_sql = &#34;COPY ({query}) TO STDOUT WITH CSV {head}&#34;.format(
             query=querystring, head=&#34;HEADER&#34;
         )
-        cur = self.db_engine.raw_connection().cursor()
+        conn = self.db_engine.raw_connection()
+        cur = conn.cursor()
         store = io.StringIO()
         cur.copy_expert(copy_sql, store)
         store.seek(0)
-        return pd.read_csv(store, low_memory=False)</code></pre>
+        data = pd.read_csv(store, low_memory=False)
+        cur.close()
+        conn.commit()
+        conn.close()
+        return data</code></pre>
 </details>
 <h3>Methods</h3>
 <dl>
@@ -1159,11 +1373,16 @@ country_code, format
     copy_sql = &#34;COPY ({query}) TO STDOUT WITH CSV {head}&#34;.format(
         query=querystring, head=&#34;HEADER&#34;
     )
-    cur = self.db_engine.raw_connection().cursor()
+    conn = self.db_engine.raw_connection()
+    cur = conn.cursor()
     store = io.StringIO()
     cur.copy_expert(copy_sql, store)
     store.seek(0)
-    return pd.read_csv(store, low_memory=False)</code></pre>
+    data = pd.read_csv(store, low_memory=False)
+    cur.close()
+    conn.commit()
+    conn.close()
+    return data</code></pre>
 </details>
 </dd>
 </dl>
@@ -1189,6 +1408,7 @@ country_code, format
 <ul class="two-column">
 <li><code><a title="reportlib.datamodule.Data.load_all" href="#reportlib.datamodule.Data.load_all">load_all</a></code></li>
 <li><code><a title="reportlib.datamodule.Data.load_aois" href="#reportlib.datamodule.Data.load_aois">load_aois</a></code></li>
+<li><code><a title="reportlib.datamodule.Data.load_blis_raw" href="#reportlib.datamodule.Data.load_blis_raw">load_blis_raw</a></code></li>
 <li><code><a title="reportlib.datamodule.Data.load_cm360" href="#reportlib.datamodule.Data.load_cm360">load_cm360</a></code></li>
 <li><code><a title="reportlib.datamodule.Data.load_dash" href="#reportlib.datamodule.Data.load_dash">load_dash</a></code></li>
 <li><code><a title="reportlib.datamodule.Data.load_lifesight" href="#reportlib.datamodule.Data.load_lifesight">load_lifesight</a></code></li>

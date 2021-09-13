@@ -46,6 +46,9 @@ from reportlib.utils import Color
 
 
 class Tile(Enum):
+    &#34;&#34;&#34;
+    Available base tiles for `reportlib.maps.AtomMap`
+    &#34;&#34;&#34;
     TERRAIN = &#34;Stamen Terrain&#34;
     STREETS = &#34;https://api.mapbox.com/styles/v1/gaspardfeuvray/ckpofztgc08ys17mlpwabqxhz/tiles/256/{z}/{x}/{y}@2x?\
 access_token=pk.eyJ1IjoiZ2FzcGFyZGZldXZyYXkiLCJhIjoiY2p2YzdhMHZzMWZyMzN5bWo3dTUwY2UxcSJ9.MwgCkS-8xqvM9wjQI-vjgw&#34;
@@ -117,7 +120,7 @@ class AtomMap:
                 popup=popup,
                 fill_color=_Palette.AOI.value,
                 color=_Palette.AOI.value,
-                opacity=0.3,
+                opacity=0.5
             ).add_to(self.fmap)
 
         self._update_bounds(aois[&#34;latitude&#34;], aois[&#34;longitude&#34;])
@@ -212,8 +215,8 @@ class AtomMap:
         lat: str = &#34;latitude&#34;,
         lon: str = &#34;longitude&#34;,
         color: Color = Color.BLUE,
-        rad: int = 1,
-        plot_max: int = 20000,
+        size: int = 1,
+        plot_max: int = 10000,
     ):
         &#34;&#34;&#34;
         Add a layer showing points from a dataframe
@@ -222,13 +225,16 @@ class AtomMap:
             df (DataFrame): The input data
             lat (str): *optional*, name of the column containing latitudes
             lon (str): *optional*, name of the column containing longitudes
-            color (int): *optional*, color of the points
-            rad (int): *optional*, size of the points
+            color (`reportlib.utils.Color`): *optional*, color of the points
+            size (int): *optional*, size of the points
             plot_max (int): *optional*, cap on the number of points to print, sampled randomly if exceeded
 
         Returns:
             self, for chaining
         &#34;&#34;&#34;
+        if df.empty:
+            return self
+
         assert (
             lat in df.columns and lon in df.columns
         ), &#34;lat/lon not found, check dataframe or use lat and lon paramaters&#34;
@@ -239,22 +245,65 @@ class AtomMap:
             print(&#34;df has&#34;, len(df), &#34;rows, capping at&#34;, plot_max, &#34;!&#34;)
             df = df.sample(plot_max)
         else:
+            print(len(df), &#34;points added&#34;)
             df = df
 
         # add points to the map
         df.apply(
             lambda row: folium.CircleMarker(
                 [row[lat], row[lon]],
-                radius=rad,
+                radius=size,
                 color=color.value,
                 fill=True,
                 fill_opacity=1,
                 opacity=1,
+                popup=folium.Popup(
+                    html=f&#34;MAID: {row[&#39;mobile_id&#39;]}, LAT/LON: {row[lat]}, {row[lon]}, {row[&#39;date_served&#39;]}&#34;,
+                    max_width=620
+                ),  # TODO: remove {row[&#39;device id&#39;]}
             ).add_to(self.fmap),
             axis=1,
         )
 
-        self._update_bounds(df[lat], df[lon])
+        if not df.empty:
+            self._update_bounds(df[lat], df[lon])
+        return self
+
+    def add_heatmap(
+        self,
+        df,
+        lat=&#34;latitude&#34;,
+        lon=&#34;longitude&#34;,
+        radius=15,
+        plot_max=200000,
+        save_to=&#34;&#34;,
+    ):
+        &#34;&#34;&#34;
+        TODO: docstring
+        &#34;&#34;&#34;
+        if len(df) &gt; plot_max:
+            df = df.sample(plot_max)
+
+        print(&#34;added&#34;, len(df), &#34;points to heatmap&#34;)
+
+        heat_data = df.dropna(subset=[lat, lon], axis=0)
+
+        sw = heat_data[[lat, lon]].min().values.tolist()
+        ne = heat_data[[lat, lon]].max().values.tolist()
+
+        heat_data = [[row[lat], row[lon]] for index, row in heat_data.iterrows()]
+
+        # self.fmap.add_child(folium.LayerControl())
+
+        self.fmap.add_child(plugins.HeatMap(heat_data, radius=radius, control=False))
+        # self.fmap.add_child(
+        #    folium.plugins.MeasureControl(
+        #        position=&#34;topright&#34;, primary_length_unit=&#34;meters&#34;
+        #    )
+        # )
+
+        if not df.empty:
+            self._update_bounds(df[lat], df[lon])
         return self
 
     def add_geojson(self, obj: json, color: Color = Color.BLUE):
@@ -272,6 +321,15 @@ class AtomMap:
         Returns:
             self, for chaining
         &#34;&#34;&#34;
+        # handle case
+        if not obj:
+            print(&#34;None passed as geojson object&#34;)
+            return self
+
+        if &#34;features&#34; in obj and len(obj[&#34;features&#34;]) == 0:
+            print(&#34;Empty geojson&#34;)
+            return self
+
         geo = folium.GeoJson(
             obj,
             name=&#34;blah&#34;,
@@ -284,8 +342,12 @@ class AtomMap:
         self.fmap.add_child(geo)
 
         # update bounds
-        for f in obj[&#34;features&#34;]:
-            coords = np.array(list(geojson.utils.coords(f)))
+        if &#34;features&#34; in obj:
+            for f in obj[&#34;features&#34;]:
+                coords = np.array(list(geojson.utils.coords(f)))
+                self._update_bounds(coords[:, 1], coords[:, 0])
+        else:
+            coords = np.array(list(geojson.utils.coords(obj)))
             self._update_bounds(coords[:, 1], coords[:, 0])
         return self
 
@@ -299,18 +361,19 @@ class AtomMap:
         self.fmap.fit_bounds([self.bounds[&#34;sw&#34;], self.bounds[&#34;ne&#34;]])
         return self.fmap
 
-    def save(self, to: str) -&gt; object:
+    def save(self, to: str, html=False) -&gt; object:
         &#34;&#34;&#34;
         Save the map in a generated folder
 
         Args:
             to (str): the new file name, without extension
+            html (bool): *optional*, wether to save the map as an html file
 
         Returns:
             self, for chaining
         &#34;&#34;&#34;
-        _save_map(self.fmap, to=to)
-        return self.fmap
+        _save_map(self.fmap, to=to, html=html)
+        return self
 
 
 def _create_map(tile: Tile) -&gt; folium.Map:
@@ -319,21 +382,26 @@ def _create_map(tile: Tile) -&gt; folium.Map:
     )
 
 
-def _save_map(fmap: folium.Map, to: str) -&gt; None:
+def _save_map(fmap: folium.Map, to: str, html=False) -&gt; None:
     &#34;&#34;&#34;
     Save the map in a generated folder. Note that the process takes ~5 seconds
 
     Args:
         fmap (folium.Map): the map to save
         to (str): *optional*, the new file name, without extension
+        html (bool): *optional*, wether to save the map as an html file
 
     Returns:
         The created folium map
     &#34;&#34;&#34;
     Path(&#34;generated&#34;).mkdir(parents=True, exist_ok=True)
-    img_data = fmap._to_png(5)
-    img = Image.open(io.BytesIO(img_data))
-    img.save(&#34;generated/&#34; + to + &#34;.png&#34;)</code></pre>
+
+    if html:
+        fmap.save(&#34;generated/&#34; + to + &#39;.html&#39;)
+    else:
+        img_data = fmap._to_png(5)
+        img = Image.open(io.BytesIO(img_data))
+        img.save(&#34;generated/&#34; + to + &#34;.png&#34;)</code></pre>
 </details>
 </section>
 <section>
@@ -418,7 +486,7 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
                 popup=popup,
                 fill_color=_Palette.AOI.value,
                 color=_Palette.AOI.value,
-                opacity=0.3,
+                opacity=0.5
             ).add_to(self.fmap)
 
         self._update_bounds(aois[&#34;latitude&#34;], aois[&#34;longitude&#34;])
@@ -513,8 +581,8 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
         lat: str = &#34;latitude&#34;,
         lon: str = &#34;longitude&#34;,
         color: Color = Color.BLUE,
-        rad: int = 1,
-        plot_max: int = 20000,
+        size: int = 1,
+        plot_max: int = 10000,
     ):
         &#34;&#34;&#34;
         Add a layer showing points from a dataframe
@@ -523,13 +591,16 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
             df (DataFrame): The input data
             lat (str): *optional*, name of the column containing latitudes
             lon (str): *optional*, name of the column containing longitudes
-            color (int): *optional*, color of the points
-            rad (int): *optional*, size of the points
+            color (`reportlib.utils.Color`): *optional*, color of the points
+            size (int): *optional*, size of the points
             plot_max (int): *optional*, cap on the number of points to print, sampled randomly if exceeded
 
         Returns:
             self, for chaining
         &#34;&#34;&#34;
+        if df.empty:
+            return self
+
         assert (
             lat in df.columns and lon in df.columns
         ), &#34;lat/lon not found, check dataframe or use lat and lon paramaters&#34;
@@ -540,22 +611,65 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
             print(&#34;df has&#34;, len(df), &#34;rows, capping at&#34;, plot_max, &#34;!&#34;)
             df = df.sample(plot_max)
         else:
+            print(len(df), &#34;points added&#34;)
             df = df
 
         # add points to the map
         df.apply(
             lambda row: folium.CircleMarker(
                 [row[lat], row[lon]],
-                radius=rad,
+                radius=size,
                 color=color.value,
                 fill=True,
                 fill_opacity=1,
                 opacity=1,
+                popup=folium.Popup(
+                    html=f&#34;MAID: {row[&#39;mobile_id&#39;]}, LAT/LON: {row[lat]}, {row[lon]}, {row[&#39;date_served&#39;]}&#34;,
+                    max_width=620
+                ),  # TODO: remove {row[&#39;device id&#39;]}
             ).add_to(self.fmap),
             axis=1,
         )
 
-        self._update_bounds(df[lat], df[lon])
+        if not df.empty:
+            self._update_bounds(df[lat], df[lon])
+        return self
+
+    def add_heatmap(
+        self,
+        df,
+        lat=&#34;latitude&#34;,
+        lon=&#34;longitude&#34;,
+        radius=15,
+        plot_max=200000,
+        save_to=&#34;&#34;,
+    ):
+        &#34;&#34;&#34;
+        TODO: docstring
+        &#34;&#34;&#34;
+        if len(df) &gt; plot_max:
+            df = df.sample(plot_max)
+
+        print(&#34;added&#34;, len(df), &#34;points to heatmap&#34;)
+
+        heat_data = df.dropna(subset=[lat, lon], axis=0)
+
+        sw = heat_data[[lat, lon]].min().values.tolist()
+        ne = heat_data[[lat, lon]].max().values.tolist()
+
+        heat_data = [[row[lat], row[lon]] for index, row in heat_data.iterrows()]
+
+        # self.fmap.add_child(folium.LayerControl())
+
+        self.fmap.add_child(plugins.HeatMap(heat_data, radius=radius, control=False))
+        # self.fmap.add_child(
+        #    folium.plugins.MeasureControl(
+        #        position=&#34;topright&#34;, primary_length_unit=&#34;meters&#34;
+        #    )
+        # )
+
+        if not df.empty:
+            self._update_bounds(df[lat], df[lon])
         return self
 
     def add_geojson(self, obj: json, color: Color = Color.BLUE):
@@ -573,6 +687,15 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
         Returns:
             self, for chaining
         &#34;&#34;&#34;
+        # handle case
+        if not obj:
+            print(&#34;None passed as geojson object&#34;)
+            return self
+
+        if &#34;features&#34; in obj and len(obj[&#34;features&#34;]) == 0:
+            print(&#34;Empty geojson&#34;)
+            return self
+
         geo = folium.GeoJson(
             obj,
             name=&#34;blah&#34;,
@@ -585,8 +708,12 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
         self.fmap.add_child(geo)
 
         # update bounds
-        for f in obj[&#34;features&#34;]:
-            coords = np.array(list(geojson.utils.coords(f)))
+        if &#34;features&#34; in obj:
+            for f in obj[&#34;features&#34;]:
+                coords = np.array(list(geojson.utils.coords(f)))
+                self._update_bounds(coords[:, 1], coords[:, 0])
+        else:
+            coords = np.array(list(geojson.utils.coords(obj)))
             self._update_bounds(coords[:, 1], coords[:, 0])
         return self
 
@@ -600,18 +727,19 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
         self.fmap.fit_bounds([self.bounds[&#34;sw&#34;], self.bounds[&#34;ne&#34;]])
         return self.fmap
 
-    def save(self, to: str) -&gt; object:
+    def save(self, to: str, html=False) -&gt; object:
         &#34;&#34;&#34;
         Save the map in a generated folder
 
         Args:
             to (str): the new file name, without extension
+            html (bool): *optional*, wether to save the map as an html file
 
         Returns:
             self, for chaining
         &#34;&#34;&#34;
-        _save_map(self.fmap, to=to)
-        return self.fmap</code></pre>
+        _save_map(self.fmap, to=to, html=html)
+        return self</code></pre>
 </details>
 <h3>Methods</h3>
 <dl>
@@ -654,7 +782,7 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
             popup=popup,
             fill_color=_Palette.AOI.value,
             color=_Palette.AOI.value,
-            opacity=0.3,
+            opacity=0.5
         ).add_to(self.fmap)
 
     self._update_bounds(aois[&#34;latitude&#34;], aois[&#34;longitude&#34;])
@@ -799,6 +927,15 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
     Returns:
         self, for chaining
     &#34;&#34;&#34;
+    # handle case
+    if not obj:
+        print(&#34;None passed as geojson object&#34;)
+        return self
+
+    if &#34;features&#34; in obj and len(obj[&#34;features&#34;]) == 0:
+        print(&#34;Empty geojson&#34;)
+        return self
+
     geo = folium.GeoJson(
         obj,
         name=&#34;blah&#34;,
@@ -811,14 +948,65 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
     self.fmap.add_child(geo)
 
     # update bounds
-    for f in obj[&#34;features&#34;]:
-        coords = np.array(list(geojson.utils.coords(f)))
+    if &#34;features&#34; in obj:
+        for f in obj[&#34;features&#34;]:
+            coords = np.array(list(geojson.utils.coords(f)))
+            self._update_bounds(coords[:, 1], coords[:, 0])
+    else:
+        coords = np.array(list(geojson.utils.coords(obj)))
         self._update_bounds(coords[:, 1], coords[:, 0])
     return self</code></pre>
 </details>
 </dd>
+<dt id="reportlib.maps.AtomMap.add_heatmap"><code class="name flex">
+<span>def <span class="ident">add_heatmap</span></span>(<span>self, df, lat='latitude', lon='longitude', radius=15, plot_max=200000, save_to='')</span>
+</code></dt>
+<dd>
+<div class="desc"><p>TODO: docstring</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def add_heatmap(
+    self,
+    df,
+    lat=&#34;latitude&#34;,
+    lon=&#34;longitude&#34;,
+    radius=15,
+    plot_max=200000,
+    save_to=&#34;&#34;,
+):
+    &#34;&#34;&#34;
+    TODO: docstring
+    &#34;&#34;&#34;
+    if len(df) &gt; plot_max:
+        df = df.sample(plot_max)
+
+    print(&#34;added&#34;, len(df), &#34;points to heatmap&#34;)
+
+    heat_data = df.dropna(subset=[lat, lon], axis=0)
+
+    sw = heat_data[[lat, lon]].min().values.tolist()
+    ne = heat_data[[lat, lon]].max().values.tolist()
+
+    heat_data = [[row[lat], row[lon]] for index, row in heat_data.iterrows()]
+
+    # self.fmap.add_child(folium.LayerControl())
+
+    self.fmap.add_child(plugins.HeatMap(heat_data, radius=radius, control=False))
+    # self.fmap.add_child(
+    #    folium.plugins.MeasureControl(
+    #        position=&#34;topright&#34;, primary_length_unit=&#34;meters&#34;
+    #    )
+    # )
+
+    if not df.empty:
+        self._update_bounds(df[lat], df[lon])
+    return self</code></pre>
+</details>
+</dd>
 <dt id="reportlib.maps.AtomMap.add_points"><code class="name flex">
-<span>def <span class="ident">add_points</span></span>(<span>self, df: pandas.core.frame.DataFrame, lat: str = 'latitude', lon: str = 'longitude', color: <a title="reportlib.utils.Color" href="utils.html#reportlib.utils.Color">Color</a> = Color.BLUE, rad: int = 1, plot_max: int = 20000)</span>
+<span>def <span class="ident">add_points</span></span>(<span>self, df: pandas.core.frame.DataFrame, lat: str = 'latitude', lon: str = 'longitude', color: <a title="reportlib.utils.Color" href="utils.html#reportlib.utils.Color">Color</a> = Color.BLUE, size: int = 1, plot_max: int = 10000)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Add a layer showing points from a dataframe</p>
@@ -830,9 +1018,8 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
 <dd><em>optional</em>, name of the column containing latitudes</dd>
 <dt><strong><code>lon</code></strong> :&ensp;<code>str</code></dt>
 <dd><em>optional</em>, name of the column containing longitudes</dd>
-<dt><strong><code>color</code></strong> :&ensp;<code>int</code></dt>
-<dd><em>optional</em>, color of the points</dd>
-<dt><strong><code>rad</code></strong> :&ensp;<code>int</code></dt>
+<dt>color (<code><a title="reportlib.utils.Color" href="utils.html#reportlib.utils.Color">Color</a></code>): <em>optional</em>, color of the points</dt>
+<dt><strong><code>size</code></strong> :&ensp;<code>int</code></dt>
 <dd><em>optional</em>, size of the points</dd>
 <dt><strong><code>plot_max</code></strong> :&ensp;<code>int</code></dt>
 <dd><em>optional</em>, cap on the number of points to print, sampled randomly if exceeded</dd>
@@ -849,8 +1036,8 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
     lat: str = &#34;latitude&#34;,
     lon: str = &#34;longitude&#34;,
     color: Color = Color.BLUE,
-    rad: int = 1,
-    plot_max: int = 20000,
+    size: int = 1,
+    plot_max: int = 10000,
 ):
     &#34;&#34;&#34;
     Add a layer showing points from a dataframe
@@ -859,13 +1046,16 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
         df (DataFrame): The input data
         lat (str): *optional*, name of the column containing latitudes
         lon (str): *optional*, name of the column containing longitudes
-        color (int): *optional*, color of the points
-        rad (int): *optional*, size of the points
+        color (`reportlib.utils.Color`): *optional*, color of the points
+        size (int): *optional*, size of the points
         plot_max (int): *optional*, cap on the number of points to print, sampled randomly if exceeded
 
     Returns:
         self, for chaining
     &#34;&#34;&#34;
+    if df.empty:
+        return self
+
     assert (
         lat in df.columns and lon in df.columns
     ), &#34;lat/lon not found, check dataframe or use lat and lon paramaters&#34;
@@ -876,27 +1066,33 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
         print(&#34;df has&#34;, len(df), &#34;rows, capping at&#34;, plot_max, &#34;!&#34;)
         df = df.sample(plot_max)
     else:
+        print(len(df), &#34;points added&#34;)
         df = df
 
     # add points to the map
     df.apply(
         lambda row: folium.CircleMarker(
             [row[lat], row[lon]],
-            radius=rad,
+            radius=size,
             color=color.value,
             fill=True,
             fill_opacity=1,
             opacity=1,
+            popup=folium.Popup(
+                html=f&#34;MAID: {row[&#39;mobile_id&#39;]}, LAT/LON: {row[lat]}, {row[lon]}, {row[&#39;date_served&#39;]}&#34;,
+                max_width=620
+            ),  # TODO: remove {row[&#39;device id&#39;]}
         ).add_to(self.fmap),
         axis=1,
     )
 
-    self._update_bounds(df[lat], df[lon])
+    if not df.empty:
+        self._update_bounds(df[lat], df[lon])
     return self</code></pre>
 </details>
 </dd>
 <dt id="reportlib.maps.AtomMap.save"><code class="name flex">
-<span>def <span class="ident">save</span></span>(<span>self, to: str) ‑> object</span>
+<span>def <span class="ident">save</span></span>(<span>self, to: str, html=False) ‑> object</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Save the map in a generated folder</p>
@@ -904,6 +1100,8 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
 <dl>
 <dt><strong><code>to</code></strong> :&ensp;<code>str</code></dt>
 <dd>the new file name, without extension</dd>
+<dt><strong><code>html</code></strong> :&ensp;<code>bool</code></dt>
+<dd><em>optional</em>, wether to save the map as an html file</dd>
 </dl>
 <h2 id="returns">Returns</h2>
 <p>self, for chaining</p></div>
@@ -911,18 +1109,19 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def save(self, to: str) -&gt; object:
+<pre><code class="python">def save(self, to: str, html=False) -&gt; object:
     &#34;&#34;&#34;
     Save the map in a generated folder
 
     Args:
         to (str): the new file name, without extension
+        html (bool): *optional*, wether to save the map as an html file
 
     Returns:
         self, for chaining
     &#34;&#34;&#34;
-    _save_map(self.fmap, to=to)
-    return self.fmap</code></pre>
+    _save_map(self.fmap, to=to, html=html)
+    return self</code></pre>
 </details>
 </dd>
 <dt id="reportlib.maps.AtomMap.show"><code class="name flex">
@@ -954,12 +1153,15 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
 <span>(</span><span>value, names=None, *, module=None, qualname=None, type=None, start=1)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>An enumeration.</p></div>
+<div class="desc"><p>Available base tiles for <code><a title="reportlib.maps.AtomMap" href="#reportlib.maps.AtomMap">AtomMap</a></code></p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">class Tile(Enum):
+    &#34;&#34;&#34;
+    Available base tiles for `reportlib.maps.AtomMap`
+    &#34;&#34;&#34;
     TERRAIN = &#34;Stamen Terrain&#34;
     STREETS = &#34;https://api.mapbox.com/styles/v1/gaspardfeuvray/ckpofztgc08ys17mlpwabqxhz/tiles/256/{z}/{x}/{y}@2x?\
 access_token=pk.eyJ1IjoiZ2FzcGFyZGZldXZyYXkiLCJhIjoiY2p2YzdhMHZzMWZyMzN5bWo3dTUwY2UxcSJ9.MwgCkS-8xqvM9wjQI-vjgw&#34;
@@ -1008,6 +1210,7 @@ access_token=pk.eyJ1IjoiZ2FzcGFyZGZldXZyYXkiLCJhIjoiY2p2YzdhMHZzMWZyMzN5bWo3dTUw
 <li><code><a title="reportlib.maps.AtomMap.add_aois" href="#reportlib.maps.AtomMap.add_aois">add_aois</a></code></li>
 <li><code><a title="reportlib.maps.AtomMap.add_aois_perf" href="#reportlib.maps.AtomMap.add_aois_perf">add_aois_perf</a></code></li>
 <li><code><a title="reportlib.maps.AtomMap.add_geojson" href="#reportlib.maps.AtomMap.add_geojson">add_geojson</a></code></li>
+<li><code><a title="reportlib.maps.AtomMap.add_heatmap" href="#reportlib.maps.AtomMap.add_heatmap">add_heatmap</a></code></li>
 <li><code><a title="reportlib.maps.AtomMap.add_points" href="#reportlib.maps.AtomMap.add_points">add_points</a></code></li>
 <li><code><a title="reportlib.maps.AtomMap.save" href="#reportlib.maps.AtomMap.save">save</a></code></li>
 <li><code><a title="reportlib.maps.AtomMap.show" href="#reportlib.maps.AtomMap.show">show</a></code></li>

@@ -35,7 +35,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from reportlib.utils import Color
-from reportlib._plotly_utils import save_fig_to, M0_LAYOUT, DEFAULT_LAYOUT
+from reportlib._plotly_utils import save_fig_to, M0_LAYOUT
 
 
 class _Palette(Enum):
@@ -44,12 +44,51 @@ class _Palette(Enum):
     CTR = Color.GREEN.value
 
 
+def overview(
+    df: pd.DataFrame,
+    by: str = None
+):
+    &#34;&#34;&#34;
+    Compute **impressions**, **ctr** and **reach** (if available), aggregated or broken down
+
+    Usage:
+        ``performance.overview(data.dash, by=&#39;aoi&#39;)``
+
+    Args:
+        df (DataFrame): input data, can be exploded or already aggregated
+        by (str): *optional*, the column name to break down by
+    &#34;&#34;&#34;
+    has_reach = &#34;mobile_id&#34; in df
+
+    if not by:
+        result = df[[&#39;impressions&#39;, &#39;clicks&#39;]].sum()
+        result[&#39;ctr&#39;] = result[&#39;clicks&#39;] / result[&#39;impressions&#39;]
+        if has_reach:
+            result[&#39;reach&#39;] = result[&#39;mobile_id&#39;].nunique()
+
+        return result
+
+    else:
+        # only add reach if MAIDs are available and with_reach is True
+        grouped = df.groupby([by], as_index=False, dropna=False).agg(
+            {
+                **{&#34;impressions&#34;: &#34;sum&#34;},
+                **({&#34;clicks&#34;: &#34;sum&#34;} if &#34;clicks&#34; in df else dict()),
+                **({&#34;mobile_id&#34;: lambda x: x.nunique()} if has_reach else dict()),
+            }
+        )
+        if &#34;clicks&#34; in df:
+            grouped[&#34;ctr&#34;] = grouped[&#34;clicks&#34;] / grouped[&#34;impressions&#34;]
+
+        return grouped
+
+
 def plot_by(
     df: pd.DataFrame,
     column: str,
     with_reach: bool = True,
     min_impressions: int = 20,
-    size: list = [750, 350],
+    size: list = [750, 400],
     sort_by: str = None,
     legend_position: str = &#34;left&#34;,
     save_to: str = None,
@@ -76,20 +115,20 @@ def plot_by(
         figure (plotly.graph_object.Figure)
     &#34;&#34;&#34;
     is_time_graph = column == &#34;date_served&#34;
+    has_clicks = &#34;clicks&#34; in df
 
     with_reach = with_reach and &#34;mobile_id&#34; in df
 
     # only add reach if MAIDs are available and with_reach is True
     grouped = df.groupby([column], as_index=False, dropna=False).agg(
         {
-            **{
-                &#34;impressions&#34;: &#34;sum&#34;,
-                &#34;clicks&#34;: &#34;sum&#34;,
-            },
+            **{&#34;impressions&#34;: &#34;sum&#34;},
+            **({&#34;clicks&#34;: &#34;sum&#34;} if has_clicks else dict()),
             **({&#34;mobile_id&#34;: lambda x: x.nunique()} if with_reach else dict()),
         }
     )
-    grouped[&#34;ctr&#34;] = grouped[&#34;clicks&#34;] / grouped[&#34;impressions&#34;]
+    if has_clicks:
+        grouped[&#34;ctr&#34;] = grouped[&#34;clicks&#34;] / grouped[&#34;impressions&#34;]
 
     if not is_time_graph and sort_by:
         grouped = grouped.sort_values(sort_by, ascending=False)
@@ -99,7 +138,7 @@ def plot_by(
 
     fig = make_subplots(
         specs=[[{&#34;secondary_y&#34;: True}]],
-        figure=go.Figure(layout={**DEFAULT_LAYOUT, **M0_LAYOUT}),
+        figure=go.Figure(layout=M0_LAYOUT),
     )
 
     w_basis = np.asarray([1000 * 3600 * 19] * len(grouped[column]))
@@ -130,27 +169,28 @@ def plot_by(
         )
 
     # CTR
-    fig.add_trace(
-        go.Scatter(
-            x=grouped[column],
-            y=grouped[&#34;ctr&#34;],
-            name=&#34;CTR&#34;,
-            marker=dict(size=8)
-            if is_time_graph
-            else dict(
-                size=18, symbol=&#34;line-ew&#34;, line=dict(color=_Palette.CTR.value, width=6)
+    if has_clicks:
+        fig.add_trace(
+            go.Scatter(
+                x=grouped[column],
+                y=grouped[&#34;ctr&#34;],
+                name=&#34;CTR&#34;,
+                marker=dict(size=8)
+                if is_time_graph
+                else dict(
+                    size=18, symbol=&#34;line-ew&#34;, line=dict(color=_Palette.CTR.value, width=6)
+                ),
+                marker_color=_Palette.CTR.value,
+                mode=&#34;lines+markers&#34; if is_time_graph else &#34;markers&#34;,
+                line_shape=&#34;spline&#34;,
             ),
-            marker_color=_Palette.CTR.value,
-            mode=&#34;lines+markers&#34; if is_time_graph else &#34;markers&#34;,
-            line_shape=&#34;spline&#34;,
-        ),
-        secondary_y=True,
-    )
+            secondary_y=True,
+        )
 
     # Adjust layout
     fig.update_layout(
         yaxis=dict(tickformat=&#34;s&#34;),
-        yaxis2=dict(tickformat=&#34;0.2%&#34;, range=[0, grouped[&#34;ctr&#34;].max() * 1.5]),
+        yaxis2=dict(tickformat=&#34;0.2%&#34;, range=[0, grouped[&#34;ctr&#34;].max() * 1.5]) if has_clicks else dict(),
         xaxis=dict(tickformat=&#34;%b %d&#34;, tickmode=&#34;auto&#34;),
         legend=dict(
             yanchor=&#34;top&#34;,
@@ -176,8 +216,65 @@ def plot_by(
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
+<dt id="reportlib.performance.overview"><code class="name flex">
+<span>def <span class="ident">overview</span></span>(<span>df: pandas.core.frame.DataFrame, by: str = None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Compute <strong>impressions</strong>, <strong>ctr</strong> and <strong>reach</strong> (if available), aggregated or broken down</p>
+<h2 id="usage">Usage</h2>
+<p><code>performance.overview(data.dash, by='aoi')</code></p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>df</code></strong> :&ensp;<code>DataFrame</code></dt>
+<dd>input data, can be exploded or already aggregated</dd>
+<dt><strong><code>by</code></strong> :&ensp;<code>str</code></dt>
+<dd><em>optional</em>, the column name to break down by</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def overview(
+    df: pd.DataFrame,
+    by: str = None
+):
+    &#34;&#34;&#34;
+    Compute **impressions**, **ctr** and **reach** (if available), aggregated or broken down
+
+    Usage:
+        ``performance.overview(data.dash, by=&#39;aoi&#39;)``
+
+    Args:
+        df (DataFrame): input data, can be exploded or already aggregated
+        by (str): *optional*, the column name to break down by
+    &#34;&#34;&#34;
+    has_reach = &#34;mobile_id&#34; in df
+
+    if not by:
+        result = df[[&#39;impressions&#39;, &#39;clicks&#39;]].sum()
+        result[&#39;ctr&#39;] = result[&#39;clicks&#39;] / result[&#39;impressions&#39;]
+        if has_reach:
+            result[&#39;reach&#39;] = result[&#39;mobile_id&#39;].nunique()
+
+        return result
+
+    else:
+        # only add reach if MAIDs are available and with_reach is True
+        grouped = df.groupby([by], as_index=False, dropna=False).agg(
+            {
+                **{&#34;impressions&#34;: &#34;sum&#34;},
+                **({&#34;clicks&#34;: &#34;sum&#34;} if &#34;clicks&#34; in df else dict()),
+                **({&#34;mobile_id&#34;: lambda x: x.nunique()} if has_reach else dict()),
+            }
+        )
+        if &#34;clicks&#34; in df:
+            grouped[&#34;ctr&#34;] = grouped[&#34;clicks&#34;] / grouped[&#34;impressions&#34;]
+
+        return grouped</code></pre>
+</details>
+</dd>
 <dt id="reportlib.performance.plot_by"><code class="name flex">
-<span>def <span class="ident">plot_by</span></span>(<span>df: pandas.core.frame.DataFrame, column: str, with_reach: bool = True, min_impressions: int = 20, size: list = [750, 350], sort_by: str = None, legend_position: str = 'left', save_to: str = None)</span>
+<span>def <span class="ident">plot_by</span></span>(<span>df: pandas.core.frame.DataFrame, column: str, with_reach: bool = True, min_impressions: int = 20, size: list = [750, 400], sort_by: str = None, legend_position: str = 'left', save_to: str = None)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Plot a performance bar + line chart showing <strong>impressions</strong>, <strong>reach</strong> (optional) and <strong>ctr</strong></p>
@@ -213,7 +310,7 @@ def plot_by(
     column: str,
     with_reach: bool = True,
     min_impressions: int = 20,
-    size: list = [750, 350],
+    size: list = [750, 400],
     sort_by: str = None,
     legend_position: str = &#34;left&#34;,
     save_to: str = None,
@@ -240,20 +337,20 @@ def plot_by(
         figure (plotly.graph_object.Figure)
     &#34;&#34;&#34;
     is_time_graph = column == &#34;date_served&#34;
+    has_clicks = &#34;clicks&#34; in df
 
     with_reach = with_reach and &#34;mobile_id&#34; in df
 
     # only add reach if MAIDs are available and with_reach is True
     grouped = df.groupby([column], as_index=False, dropna=False).agg(
         {
-            **{
-                &#34;impressions&#34;: &#34;sum&#34;,
-                &#34;clicks&#34;: &#34;sum&#34;,
-            },
+            **{&#34;impressions&#34;: &#34;sum&#34;},
+            **({&#34;clicks&#34;: &#34;sum&#34;} if has_clicks else dict()),
             **({&#34;mobile_id&#34;: lambda x: x.nunique()} if with_reach else dict()),
         }
     )
-    grouped[&#34;ctr&#34;] = grouped[&#34;clicks&#34;] / grouped[&#34;impressions&#34;]
+    if has_clicks:
+        grouped[&#34;ctr&#34;] = grouped[&#34;clicks&#34;] / grouped[&#34;impressions&#34;]
 
     if not is_time_graph and sort_by:
         grouped = grouped.sort_values(sort_by, ascending=False)
@@ -263,7 +360,7 @@ def plot_by(
 
     fig = make_subplots(
         specs=[[{&#34;secondary_y&#34;: True}]],
-        figure=go.Figure(layout={**DEFAULT_LAYOUT, **M0_LAYOUT}),
+        figure=go.Figure(layout=M0_LAYOUT),
     )
 
     w_basis = np.asarray([1000 * 3600 * 19] * len(grouped[column]))
@@ -294,27 +391,28 @@ def plot_by(
         )
 
     # CTR
-    fig.add_trace(
-        go.Scatter(
-            x=grouped[column],
-            y=grouped[&#34;ctr&#34;],
-            name=&#34;CTR&#34;,
-            marker=dict(size=8)
-            if is_time_graph
-            else dict(
-                size=18, symbol=&#34;line-ew&#34;, line=dict(color=_Palette.CTR.value, width=6)
+    if has_clicks:
+        fig.add_trace(
+            go.Scatter(
+                x=grouped[column],
+                y=grouped[&#34;ctr&#34;],
+                name=&#34;CTR&#34;,
+                marker=dict(size=8)
+                if is_time_graph
+                else dict(
+                    size=18, symbol=&#34;line-ew&#34;, line=dict(color=_Palette.CTR.value, width=6)
+                ),
+                marker_color=_Palette.CTR.value,
+                mode=&#34;lines+markers&#34; if is_time_graph else &#34;markers&#34;,
+                line_shape=&#34;spline&#34;,
             ),
-            marker_color=_Palette.CTR.value,
-            mode=&#34;lines+markers&#34; if is_time_graph else &#34;markers&#34;,
-            line_shape=&#34;spline&#34;,
-        ),
-        secondary_y=True,
-    )
+            secondary_y=True,
+        )
 
     # Adjust layout
     fig.update_layout(
         yaxis=dict(tickformat=&#34;s&#34;),
-        yaxis2=dict(tickformat=&#34;0.2%&#34;, range=[0, grouped[&#34;ctr&#34;].max() * 1.5]),
+        yaxis2=dict(tickformat=&#34;0.2%&#34;, range=[0, grouped[&#34;ctr&#34;].max() * 1.5]) if has_clicks else dict(),
         xaxis=dict(tickformat=&#34;%b %d&#34;, tickmode=&#34;auto&#34;),
         legend=dict(
             yanchor=&#34;top&#34;,
@@ -351,6 +449,7 @@ def plot_by(
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
+<li><code><a title="reportlib.performance.overview" href="#reportlib.performance.overview">overview</a></code></li>
 <li><code><a title="reportlib.performance.plot_by" href="#reportlib.performance.plot_by">plot_by</a></code></li>
 </ul>
 </li>
