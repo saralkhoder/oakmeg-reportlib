@@ -175,6 +175,7 @@ class Data:
         adtypes = self._get_dash_mop_adtypes()
 
         if adtypes:
+            print(adtypes)
             dash = self.db.query(
                 f"""
                 select project, adtype, impressions, clicks, date_served, message, assetid, ad_language,\
@@ -189,8 +190,9 @@ class Data:
 
             if not self.aois.empty:
                 dash["geohash"] = dash["message"].apply(lambda m: self._extract_aoi(m))
+                print(dict(zip(self.aois["geohash"].tolist(), self.aois["name"].tolist())))
                 dash["aoi"] = dash["geohash"].replace(
-                    dict(zip(self.aois["message"].tolist(), self.aois["name"].tolist()))
+                    dict(zip(self.aois["geohash"].tolist(), self.aois["name"].tolist()))
                 )
             else:
                 print("! could not enrich dash data with aoi")
@@ -432,6 +434,50 @@ class Data:
         self.load_survey()
 
         print("Done!")
+
+
+def get_maids_data(df: pd.DataFrame) -> tuple:
+    """
+    Load both past impressions and lifesight for given maids
+
+    Args:
+        df (DataFrame): dataframe with mobile_id column
+
+    Returns:
+        past_impressions(DataFrame): all geolocated past impressions for those maids (from public.geoloc_impr table)
+        lifesight(DataFrame): all lifesight data for those maids (from public.lifesight_raw_2)
+    """
+    assert 'mobile_id' in df, "'mobile_id' column not found if DataFrame"
+
+    db = DbConnection("../secrets.yaml")
+
+    maids = df[["mobile_id"]].dropna().drop_duplicates()
+    maids["mobile_id"] = maids["mobile_id"].str.lower()
+
+    print("uploading", len(maids), "maids")
+    maids.to_sql(
+        "maids_manual", db.db_engine, schema="public", if_exists="replace", index=False
+    )
+
+    print("\ndownloading past impressions")
+    past_impressions = db.query("""
+    select *
+    from geoloc_impr gi
+    inner join (select mobile_id from maids_manual) as m 
+    on gi.mobile_id = m.mobile_id
+    """)
+    print("found", len(past_impressions), 'past impressions')
+
+    print("\ndownloading lifesight data")
+    lifesight = db.query("""
+    select *
+    from lifesight_raw_2 lr
+    inner join (select mobile_id from maids_manual) as m 
+    on lr.mobile_id = m.mobile_id
+    """)
+    print("found", len(lifesight), 'entries')
+
+    return past_impressions, lifesight
 
 
 def _where_clause(dict_filters):
