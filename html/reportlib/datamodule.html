@@ -31,6 +31,7 @@
 import io
 import os
 import re
+from pathlib import Path
 
 import yaml
 import urllib.parse
@@ -219,7 +220,9 @@ class Data:
 
             if not self.aois.empty:
                 dash[&#34;geohash&#34;] = dash[&#34;message&#34;].apply(lambda m: self._extract_aoi(m))
-                print(dict(zip(self.aois[&#34;geohash&#34;].tolist(), self.aois[&#34;name&#34;].tolist())))
+                print(
+                    dict(zip(self.aois[&#34;geohash&#34;].tolist(), self.aois[&#34;name&#34;].tolist()))
+                )
                 dash[&#34;aoi&#34;] = dash[&#34;geohash&#34;].replace(
                     dict(zip(self.aois[&#34;geohash&#34;].tolist(), self.aois[&#34;name&#34;].tolist()))
                 )
@@ -307,7 +310,14 @@ class Data:
         mop = pd.concat(dataframes, axis=0)
 
         mop.columns = mop.columns.str.lower()
-        mop = mop.rename(columns={&#34;device id&#34;: &#34;mobile_id&#34;, &#34;date&#34;: &#34;date_served&#34;})
+        mop = mop.rename(
+            columns={
+                &#34;device id&#34;: &#34;mobile_id&#34;,
+                &#34;date&#34;: &#34;date_served&#34;,
+                &#34;hour&#34;: &#34;hourserved&#34;,
+                &#34;placement&#34;: &#34;message&#34;,
+            }
+        )
 
         aoi_exploded = (
             mop[&#34;placement&#34;]
@@ -464,6 +474,74 @@ class Data:
 
         print(&#34;Done!&#34;)
 
+    Path(&#34;raw&#34;).mkdir(parents=True, exist_ok=True)
+
+    def export_raw(
+        self, external_mop=pd.DataFrame(), external_lifesight=pd.DataFrame()
+    ):
+        &#34;&#34;&#34;
+        Export both mop and maids raw data for client delivery. Uses internal mop and lifesight attributes by default.
+
+        Args:
+            external_mop (DataFrame): *optional*, override mop dataframe
+            external_lifesight (DataFrame): *optional*, override lifesight dataframe
+        &#34;&#34;&#34;
+        # export impressions table
+        cols = [
+            &#34;date_served&#34;,
+            &#34;impressions&#34;,
+            &#34;clicks&#34;,
+            &#34;mobile_id&#34;,
+            &#34;longitude&#34;,
+            &#34;latitude&#34;,
+            &#34;format&#34;,
+            &#34;message&#34;,
+            &#34;hourserved&#34;,
+        ]
+        filename = f&#34;Export_MOP_{self.project_id}_{self.campaign_id}&#34;
+        mop_data = external_mop if not external_mop.empty else self.mop
+        assert not mop_data.empty, &#34;no mop data provided!&#34;
+        mop_data[cols].to_csv(
+            f&#34;raw/{filename}.zip&#34;,
+            compression=dict(method=&#34;zip&#34;, archive_name=f&#34;{filename}.csv&#34;),
+            index=False,
+        )
+
+        # export maids table
+        cols = [
+            &#34;mobile_id&#34;,
+            &#34;devicetype&#34;,
+            &#34;idtype&#34;,
+            &#34;make&#34;,
+            &#34;model&#34;,
+            &#34;os&#34;,
+            &#34;osver&#34;,
+            &#34;devicecost&#34;,
+            &#34;homecountry&#34;,
+            &#34;workgeohash&#34;,
+            &#34;worklat&#34;,
+            &#34;worklong&#34;,
+            &#34;carriers&#34;,
+            &#34;homegeohash&#34;,
+            &#34;homelat&#34;,
+            &#34;homelong&#34;,
+            &#34;travelcountries&#34;,
+            &#34;gender&#34;,
+            &#34;deviceage&#34;,
+            &#34;yob&#34;,
+            &#34;age&#34;,
+        ]
+        filename = f&#34;Export_MAIDS_{self.project_id}_{self.campaign_id}&#34;
+        life_data = (
+            external_lifesight if not external_lifesight.empty else self.lifesight
+        )
+        assert not life_data.empty, &#34;no lifesight data provided!&#34;
+        life_data[cols].drop_duplicates(subset=[&#34;mobile_id&#34;]).to_csv(
+            f&#34;raw/{filename}.zip&#34;,
+            compression=dict(method=&#34;zip&#34;, archive_name=f&#34;{filename}.csv&#34;),
+            index=False,
+        )
+
 
 def get_maids_data(df: pd.DataFrame) -&gt; tuple:
     &#34;&#34;&#34;
@@ -476,7 +554,7 @@ def get_maids_data(df: pd.DataFrame) -&gt; tuple:
         past_impressions(DataFrame): all geolocated past impressions for those maids (from public.geoloc_impr table)
         lifesight(DataFrame): all lifesight data for those maids (from public.lifesight_raw_2)
     &#34;&#34;&#34;
-    assert &#39;mobile_id&#39; in df, &#34;&#39;mobile_id&#39; column not found if DataFrame&#34;
+    assert &#34;mobile_id&#34; in df, &#34;&#39;mobile_id&#39; column not found if DataFrame&#34;
 
     db = DbConnection(&#34;../secrets.yaml&#34;)
 
@@ -489,22 +567,26 @@ def get_maids_data(df: pd.DataFrame) -&gt; tuple:
     )
 
     print(&#34;\ndownloading past impressions&#34;)
-    past_impressions = db.query(&#34;&#34;&#34;
+    past_impressions = db.query(
+        &#34;&#34;&#34;
     select *
     from geoloc_impr gi
     inner join (select mobile_id from maids_manual) as m 
     on gi.mobile_id = m.mobile_id
-    &#34;&#34;&#34;)
-    print(&#34;found&#34;, len(past_impressions), &#39;past impressions&#39;)
+    &#34;&#34;&#34;
+    )
+    print(&#34;found&#34;, len(past_impressions), &#34;past impressions&#34;)
 
     print(&#34;\ndownloading lifesight data&#34;)
-    lifesight = db.query(&#34;&#34;&#34;
+    lifesight = db.query(
+        &#34;&#34;&#34;
     select *
     from lifesight_raw_2 lr
     inner join (select mobile_id from maids_manual) as m 
     on lr.mobile_id = m.mobile_id
-    &#34;&#34;&#34;)
-    print(&#34;found&#34;, len(lifesight), &#39;entries&#39;)
+    &#34;&#34;&#34;
+    )
+    print(&#34;found&#34;, len(lifesight), &#34;entries&#34;)
 
     return past_impressions, lifesight
 
@@ -564,7 +646,7 @@ lifesight(DataFrame): all lifesight data for those maids (from public.lifesight_
         past_impressions(DataFrame): all geolocated past impressions for those maids (from public.geoloc_impr table)
         lifesight(DataFrame): all lifesight data for those maids (from public.lifesight_raw_2)
     &#34;&#34;&#34;
-    assert &#39;mobile_id&#39; in df, &#34;&#39;mobile_id&#39; column not found if DataFrame&#34;
+    assert &#34;mobile_id&#34; in df, &#34;&#39;mobile_id&#39; column not found if DataFrame&#34;
 
     db = DbConnection(&#34;../secrets.yaml&#34;)
 
@@ -577,22 +659,26 @@ lifesight(DataFrame): all lifesight data for those maids (from public.lifesight_
     )
 
     print(&#34;\ndownloading past impressions&#34;)
-    past_impressions = db.query(&#34;&#34;&#34;
+    past_impressions = db.query(
+        &#34;&#34;&#34;
     select *
     from geoloc_impr gi
     inner join (select mobile_id from maids_manual) as m 
     on gi.mobile_id = m.mobile_id
-    &#34;&#34;&#34;)
-    print(&#34;found&#34;, len(past_impressions), &#39;past impressions&#39;)
+    &#34;&#34;&#34;
+    )
+    print(&#34;found&#34;, len(past_impressions), &#34;past impressions&#34;)
 
     print(&#34;\ndownloading lifesight data&#34;)
-    lifesight = db.query(&#34;&#34;&#34;
+    lifesight = db.query(
+        &#34;&#34;&#34;
     select *
     from lifesight_raw_2 lr
     inner join (select mobile_id from maids_manual) as m 
     on lr.mobile_id = m.mobile_id
-    &#34;&#34;&#34;)
-    print(&#34;found&#34;, len(lifesight), &#39;entries&#39;)
+    &#34;&#34;&#34;
+    )
+    print(&#34;found&#34;, len(lifesight), &#34;entries&#34;)
 
     return past_impressions, lifesight</code></pre>
 </details>
@@ -757,7 +843,9 @@ lifesight(DataFrame): all lifesight data for those maids (from public.lifesight_
 
             if not self.aois.empty:
                 dash[&#34;geohash&#34;] = dash[&#34;message&#34;].apply(lambda m: self._extract_aoi(m))
-                print(dict(zip(self.aois[&#34;geohash&#34;].tolist(), self.aois[&#34;name&#34;].tolist())))
+                print(
+                    dict(zip(self.aois[&#34;geohash&#34;].tolist(), self.aois[&#34;name&#34;].tolist()))
+                )
                 dash[&#34;aoi&#34;] = dash[&#34;geohash&#34;].replace(
                     dict(zip(self.aois[&#34;geohash&#34;].tolist(), self.aois[&#34;name&#34;].tolist()))
                 )
@@ -845,7 +933,14 @@ lifesight(DataFrame): all lifesight data for those maids (from public.lifesight_
         mop = pd.concat(dataframes, axis=0)
 
         mop.columns = mop.columns.str.lower()
-        mop = mop.rename(columns={&#34;device id&#34;: &#34;mobile_id&#34;, &#34;date&#34;: &#34;date_served&#34;})
+        mop = mop.rename(
+            columns={
+                &#34;device id&#34;: &#34;mobile_id&#34;,
+                &#34;date&#34;: &#34;date_served&#34;,
+                &#34;hour&#34;: &#34;hourserved&#34;,
+                &#34;placement&#34;: &#34;message&#34;,
+            }
+        )
 
         aoi_exploded = (
             mop[&#34;placement&#34;]
@@ -1000,10 +1095,165 @@ lifesight(DataFrame): all lifesight data for those maids (from public.lifesight_
         self.load_lifesight()
         self.load_survey()
 
-        print(&#34;Done!&#34;)</code></pre>
+        print(&#34;Done!&#34;)
+
+    Path(&#34;raw&#34;).mkdir(parents=True, exist_ok=True)
+
+    def export_raw(
+        self, external_mop=pd.DataFrame(), external_lifesight=pd.DataFrame()
+    ):
+        &#34;&#34;&#34;
+        Export both mop and maids raw data for client delivery. Uses internal mop and lifesight attributes by default.
+
+        Args:
+            external_mop (DataFrame): *optional*, override mop dataframe
+            external_lifesight (DataFrame): *optional*, override lifesight dataframe
+        &#34;&#34;&#34;
+        # export impressions table
+        cols = [
+            &#34;date_served&#34;,
+            &#34;impressions&#34;,
+            &#34;clicks&#34;,
+            &#34;mobile_id&#34;,
+            &#34;longitude&#34;,
+            &#34;latitude&#34;,
+            &#34;format&#34;,
+            &#34;message&#34;,
+            &#34;hourserved&#34;,
+        ]
+        filename = f&#34;Export_MOP_{self.project_id}_{self.campaign_id}&#34;
+        mop_data = external_mop if not external_mop.empty else self.mop
+        assert not mop_data.empty, &#34;no mop data provided!&#34;
+        mop_data[cols].to_csv(
+            f&#34;raw/{filename}.zip&#34;,
+            compression=dict(method=&#34;zip&#34;, archive_name=f&#34;{filename}.csv&#34;),
+            index=False,
+        )
+
+        # export maids table
+        cols = [
+            &#34;mobile_id&#34;,
+            &#34;devicetype&#34;,
+            &#34;idtype&#34;,
+            &#34;make&#34;,
+            &#34;model&#34;,
+            &#34;os&#34;,
+            &#34;osver&#34;,
+            &#34;devicecost&#34;,
+            &#34;homecountry&#34;,
+            &#34;workgeohash&#34;,
+            &#34;worklat&#34;,
+            &#34;worklong&#34;,
+            &#34;carriers&#34;,
+            &#34;homegeohash&#34;,
+            &#34;homelat&#34;,
+            &#34;homelong&#34;,
+            &#34;travelcountries&#34;,
+            &#34;gender&#34;,
+            &#34;deviceage&#34;,
+            &#34;yob&#34;,
+            &#34;age&#34;,
+        ]
+        filename = f&#34;Export_MAIDS_{self.project_id}_{self.campaign_id}&#34;
+        life_data = (
+            external_lifesight if not external_lifesight.empty else self.lifesight
+        )
+        assert not life_data.empty, &#34;no lifesight data provided!&#34;
+        life_data[cols].drop_duplicates(subset=[&#34;mobile_id&#34;]).to_csv(
+            f&#34;raw/{filename}.zip&#34;,
+            compression=dict(method=&#34;zip&#34;, archive_name=f&#34;{filename}.csv&#34;),
+            index=False,
+        )</code></pre>
 </details>
 <h3>Methods</h3>
 <dl>
+<dt id="reportlib.datamodule.Data.export_raw"><code class="name flex">
+<span>def <span class="ident">export_raw</span></span>(<span>self, external_mop=Empty DataFrame
+Columns: []
+Index: [], external_lifesight=Empty DataFrame
+Columns: []
+Index: [])</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Export both mop and maids raw data for client delivery. Uses internal mop and lifesight attributes by default.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>external_mop</code></strong> :&ensp;<code>DataFrame</code></dt>
+<dd><em>optional</em>, override mop dataframe</dd>
+<dt><strong><code>external_lifesight</code></strong> :&ensp;<code>DataFrame</code></dt>
+<dd><em>optional</em>, override lifesight dataframe</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def export_raw(
+    self, external_mop=pd.DataFrame(), external_lifesight=pd.DataFrame()
+):
+    &#34;&#34;&#34;
+    Export both mop and maids raw data for client delivery. Uses internal mop and lifesight attributes by default.
+
+    Args:
+        external_mop (DataFrame): *optional*, override mop dataframe
+        external_lifesight (DataFrame): *optional*, override lifesight dataframe
+    &#34;&#34;&#34;
+    # export impressions table
+    cols = [
+        &#34;date_served&#34;,
+        &#34;impressions&#34;,
+        &#34;clicks&#34;,
+        &#34;mobile_id&#34;,
+        &#34;longitude&#34;,
+        &#34;latitude&#34;,
+        &#34;format&#34;,
+        &#34;message&#34;,
+        &#34;hourserved&#34;,
+    ]
+    filename = f&#34;Export_MOP_{self.project_id}_{self.campaign_id}&#34;
+    mop_data = external_mop if not external_mop.empty else self.mop
+    assert not mop_data.empty, &#34;no mop data provided!&#34;
+    mop_data[cols].to_csv(
+        f&#34;raw/{filename}.zip&#34;,
+        compression=dict(method=&#34;zip&#34;, archive_name=f&#34;{filename}.csv&#34;),
+        index=False,
+    )
+
+    # export maids table
+    cols = [
+        &#34;mobile_id&#34;,
+        &#34;devicetype&#34;,
+        &#34;idtype&#34;,
+        &#34;make&#34;,
+        &#34;model&#34;,
+        &#34;os&#34;,
+        &#34;osver&#34;,
+        &#34;devicecost&#34;,
+        &#34;homecountry&#34;,
+        &#34;workgeohash&#34;,
+        &#34;worklat&#34;,
+        &#34;worklong&#34;,
+        &#34;carriers&#34;,
+        &#34;homegeohash&#34;,
+        &#34;homelat&#34;,
+        &#34;homelong&#34;,
+        &#34;travelcountries&#34;,
+        &#34;gender&#34;,
+        &#34;deviceage&#34;,
+        &#34;yob&#34;,
+        &#34;age&#34;,
+    ]
+    filename = f&#34;Export_MAIDS_{self.project_id}_{self.campaign_id}&#34;
+    life_data = (
+        external_lifesight if not external_lifesight.empty else self.lifesight
+    )
+    assert not life_data.empty, &#34;no lifesight data provided!&#34;
+    life_data[cols].drop_duplicates(subset=[&#34;mobile_id&#34;]).to_csv(
+        f&#34;raw/{filename}.zip&#34;,
+        compression=dict(method=&#34;zip&#34;, archive_name=f&#34;{filename}.csv&#34;),
+        index=False,
+    )</code></pre>
+</details>
+</dd>
 <dt id="reportlib.datamodule.Data.load_all"><code class="name flex">
 <span>def <span class="ident">load_all</span></span>(<span>self) ‑> None</span>
 </code></dt>
@@ -1096,7 +1346,14 @@ lifesight(DataFrame): all lifesight data for those maids (from public.lifesight_
     mop = pd.concat(dataframes, axis=0)
 
     mop.columns = mop.columns.str.lower()
-    mop = mop.rename(columns={&#34;device id&#34;: &#34;mobile_id&#34;, &#34;date&#34;: &#34;date_served&#34;})
+    mop = mop.rename(
+        columns={
+            &#34;device id&#34;: &#34;mobile_id&#34;,
+            &#34;date&#34;: &#34;date_served&#34;,
+            &#34;hour&#34;: &#34;hourserved&#34;,
+            &#34;placement&#34;: &#34;message&#34;,
+        }
+    )
 
     aoi_exploded = (
         mop[&#34;placement&#34;]
@@ -1203,7 +1460,9 @@ lifesight(DataFrame): all lifesight data for those maids (from public.lifesight_
 
         if not self.aois.empty:
             dash[&#34;geohash&#34;] = dash[&#34;message&#34;].apply(lambda m: self._extract_aoi(m))
-            print(dict(zip(self.aois[&#34;geohash&#34;].tolist(), self.aois[&#34;name&#34;].tolist())))
+            print(
+                dict(zip(self.aois[&#34;geohash&#34;].tolist(), self.aois[&#34;name&#34;].tolist()))
+            )
             dash[&#34;aoi&#34;] = dash[&#34;geohash&#34;].replace(
                 dict(zip(self.aois[&#34;geohash&#34;].tolist(), self.aois[&#34;name&#34;].tolist()))
             )
@@ -1525,6 +1784,7 @@ lifesight(DataFrame): all lifesight data for those maids (from public.lifesight_
 <li>
 <h4><code><a title="reportlib.datamodule.Data" href="#reportlib.datamodule.Data">Data</a></code></h4>
 <ul class="two-column">
+<li><code><a title="reportlib.datamodule.Data.export_raw" href="#reportlib.datamodule.Data.export_raw">export_raw</a></code></li>
 <li><code><a title="reportlib.datamodule.Data.load_all" href="#reportlib.datamodule.Data.load_all">load_all</a></code></li>
 <li><code><a title="reportlib.datamodule.Data.load_aois" href="#reportlib.datamodule.Data.load_aois">load_aois</a></code></li>
 <li><code><a title="reportlib.datamodule.Data.load_blis_raw" href="#reportlib.datamodule.Data.load_blis_raw">load_blis_raw</a></code></li>
