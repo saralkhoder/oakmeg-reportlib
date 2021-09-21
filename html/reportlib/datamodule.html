@@ -204,6 +204,7 @@ class Data:
         adtypes = self._get_dash_mop_adtypes()
 
         if adtypes:
+            print(adtypes)
             dash = self.db.query(
                 f&#34;&#34;&#34;
                 select project, adtype, impressions, clicks, date_served, message, assetid, ad_language,\
@@ -218,8 +219,9 @@ class Data:
 
             if not self.aois.empty:
                 dash[&#34;geohash&#34;] = dash[&#34;message&#34;].apply(lambda m: self._extract_aoi(m))
+                print(dict(zip(self.aois[&#34;geohash&#34;].tolist(), self.aois[&#34;name&#34;].tolist())))
                 dash[&#34;aoi&#34;] = dash[&#34;geohash&#34;].replace(
-                    dict(zip(self.aois[&#34;message&#34;].tolist(), self.aois[&#34;name&#34;].tolist()))
+                    dict(zip(self.aois[&#34;geohash&#34;].tolist(), self.aois[&#34;name&#34;].tolist()))
                 )
             else:
                 print(&#34;! could not enrich dash data with aoi&#34;)
@@ -463,6 +465,50 @@ class Data:
         print(&#34;Done!&#34;)
 
 
+def get_maids_data(df: pd.DataFrame) -&gt; tuple:
+    &#34;&#34;&#34;
+    Load both past impressions and lifesight for given maids
+
+    Args:
+        df (DataFrame): dataframe with mobile_id column
+
+    Returns:
+        past_impressions(DataFrame): all geolocated past impressions for those maids (from public.geoloc_impr table)
+        lifesight(DataFrame): all lifesight data for those maids (from public.lifesight_raw_2)
+    &#34;&#34;&#34;
+    assert &#39;mobile_id&#39; in df, &#34;&#39;mobile_id&#39; column not found if DataFrame&#34;
+
+    db = DbConnection(&#34;../secrets.yaml&#34;)
+
+    maids = df[[&#34;mobile_id&#34;]].dropna().drop_duplicates()
+    maids[&#34;mobile_id&#34;] = maids[&#34;mobile_id&#34;].str.lower()
+
+    print(&#34;uploading&#34;, len(maids), &#34;maids&#34;)
+    maids.to_sql(
+        &#34;maids_manual&#34;, db.db_engine, schema=&#34;public&#34;, if_exists=&#34;replace&#34;, index=False
+    )
+
+    print(&#34;\ndownloading past impressions&#34;)
+    past_impressions = db.query(&#34;&#34;&#34;
+    select *
+    from geoloc_impr gi
+    inner join (select mobile_id from maids_manual) as m 
+    on gi.mobile_id = m.mobile_id
+    &#34;&#34;&#34;)
+    print(&#34;found&#34;, len(past_impressions), &#39;past impressions&#39;)
+
+    print(&#34;\ndownloading lifesight data&#34;)
+    lifesight = db.query(&#34;&#34;&#34;
+    select *
+    from lifesight_raw_2 lr
+    inner join (select mobile_id from maids_manual) as m 
+    on lr.mobile_id = m.mobile_id
+    &#34;&#34;&#34;)
+    print(&#34;found&#34;, len(lifesight), &#39;entries&#39;)
+
+    return past_impressions, lifesight
+
+
 def _where_clause(dict_filters):
     &#34;&#34;&#34;
     Return a where clause as a string from a dictionary of lists
@@ -488,6 +534,70 @@ def _where_clause(dict_filters):
 <section>
 </section>
 <section>
+<h2 class="section-title" id="header-functions">Functions</h2>
+<dl>
+<dt id="reportlib.datamodule.get_maids_data"><code class="name flex">
+<span>def <span class="ident">get_maids_data</span></span>(<span>df: pandas.core.frame.DataFrame) ‑> tuple</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Load both past impressions and lifesight for given maids</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>df</code></strong> :&ensp;<code>DataFrame</code></dt>
+<dd>dataframe with mobile_id column</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<p>past_impressions(DataFrame): all geolocated past impressions for those maids (from public.geoloc_impr table)
+lifesight(DataFrame): all lifesight data for those maids (from public.lifesight_raw_2)</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def get_maids_data(df: pd.DataFrame) -&gt; tuple:
+    &#34;&#34;&#34;
+    Load both past impressions and lifesight for given maids
+
+    Args:
+        df (DataFrame): dataframe with mobile_id column
+
+    Returns:
+        past_impressions(DataFrame): all geolocated past impressions for those maids (from public.geoloc_impr table)
+        lifesight(DataFrame): all lifesight data for those maids (from public.lifesight_raw_2)
+    &#34;&#34;&#34;
+    assert &#39;mobile_id&#39; in df, &#34;&#39;mobile_id&#39; column not found if DataFrame&#34;
+
+    db = DbConnection(&#34;../secrets.yaml&#34;)
+
+    maids = df[[&#34;mobile_id&#34;]].dropna().drop_duplicates()
+    maids[&#34;mobile_id&#34;] = maids[&#34;mobile_id&#34;].str.lower()
+
+    print(&#34;uploading&#34;, len(maids), &#34;maids&#34;)
+    maids.to_sql(
+        &#34;maids_manual&#34;, db.db_engine, schema=&#34;public&#34;, if_exists=&#34;replace&#34;, index=False
+    )
+
+    print(&#34;\ndownloading past impressions&#34;)
+    past_impressions = db.query(&#34;&#34;&#34;
+    select *
+    from geoloc_impr gi
+    inner join (select mobile_id from maids_manual) as m 
+    on gi.mobile_id = m.mobile_id
+    &#34;&#34;&#34;)
+    print(&#34;found&#34;, len(past_impressions), &#39;past impressions&#39;)
+
+    print(&#34;\ndownloading lifesight data&#34;)
+    lifesight = db.query(&#34;&#34;&#34;
+    select *
+    from lifesight_raw_2 lr
+    inner join (select mobile_id from maids_manual) as m 
+    on lr.mobile_id = m.mobile_id
+    &#34;&#34;&#34;)
+    print(&#34;found&#34;, len(lifesight), &#39;entries&#39;)
+
+    return past_impressions, lifesight</code></pre>
+</details>
+</dd>
+</dl>
 </section>
 <section>
 <h2 class="section-title" id="header-classes">Classes</h2>
@@ -632,6 +742,7 @@ def _where_clause(dict_filters):
         adtypes = self._get_dash_mop_adtypes()
 
         if adtypes:
+            print(adtypes)
             dash = self.db.query(
                 f&#34;&#34;&#34;
                 select project, adtype, impressions, clicks, date_served, message, assetid, ad_language,\
@@ -646,8 +757,9 @@ def _where_clause(dict_filters):
 
             if not self.aois.empty:
                 dash[&#34;geohash&#34;] = dash[&#34;message&#34;].apply(lambda m: self._extract_aoi(m))
+                print(dict(zip(self.aois[&#34;geohash&#34;].tolist(), self.aois[&#34;name&#34;].tolist())))
                 dash[&#34;aoi&#34;] = dash[&#34;geohash&#34;].replace(
-                    dict(zip(self.aois[&#34;message&#34;].tolist(), self.aois[&#34;name&#34;].tolist()))
+                    dict(zip(self.aois[&#34;geohash&#34;].tolist(), self.aois[&#34;name&#34;].tolist()))
                 )
             else:
                 print(&#34;! could not enrich dash data with aoi&#34;)
@@ -1076,6 +1188,7 @@ def _where_clause(dict_filters):
     adtypes = self._get_dash_mop_adtypes()
 
     if adtypes:
+        print(adtypes)
         dash = self.db.query(
             f&#34;&#34;&#34;
             select project, adtype, impressions, clicks, date_served, message, assetid, ad_language,\
@@ -1090,8 +1203,9 @@ def _where_clause(dict_filters):
 
         if not self.aois.empty:
             dash[&#34;geohash&#34;] = dash[&#34;message&#34;].apply(lambda m: self._extract_aoi(m))
+            print(dict(zip(self.aois[&#34;geohash&#34;].tolist(), self.aois[&#34;name&#34;].tolist())))
             dash[&#34;aoi&#34;] = dash[&#34;geohash&#34;].replace(
-                dict(zip(self.aois[&#34;message&#34;].tolist(), self.aois[&#34;name&#34;].tolist()))
+                dict(zip(self.aois[&#34;geohash&#34;].tolist(), self.aois[&#34;name&#34;].tolist()))
             )
         else:
             print(&#34;! could not enrich dash data with aoi&#34;)
@@ -1399,6 +1513,11 @@ def _where_clause(dict_filters):
 <li><h3>Super-module</h3>
 <ul>
 <li><code><a title="reportlib" href="index.html">reportlib</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="">
+<li><code><a title="reportlib.datamodule.get_maids_data" href="#reportlib.datamodule.get_maids_data">get_maids_data</a></code></li>
 </ul>
 </li>
 <li><h3><a href="#header-classes">Classes</a></h3>
