@@ -2,6 +2,7 @@
 import io
 import os
 import re
+from pathlib import Path
 
 import yaml
 import urllib.parse
@@ -190,7 +191,9 @@ class Data:
 
             if not self.aois.empty:
                 dash["geohash"] = dash["message"].apply(lambda m: self._extract_aoi(m))
-                print(dict(zip(self.aois["geohash"].tolist(), self.aois["name"].tolist())))
+                print(
+                    dict(zip(self.aois["geohash"].tolist(), self.aois["name"].tolist()))
+                )
                 dash["aoi"] = dash["geohash"].replace(
                     dict(zip(self.aois["geohash"].tolist(), self.aois["name"].tolist()))
                 )
@@ -278,7 +281,14 @@ class Data:
         mop = pd.concat(dataframes, axis=0)
 
         mop.columns = mop.columns.str.lower()
-        mop = mop.rename(columns={"device id": "mobile_id", "date": "date_served"})
+        mop = mop.rename(
+            columns={
+                "device id": "mobile_id",
+                "date": "date_served",
+                "hour": "hourserved",
+                "placement": "message",
+            }
+        )
 
         aoi_exploded = (
             mop["placement"]
@@ -435,6 +445,74 @@ class Data:
 
         print("Done!")
 
+    Path("raw").mkdir(parents=True, exist_ok=True)
+
+    def export_raw(
+        self, external_mop=pd.DataFrame(), external_lifesight=pd.DataFrame()
+    ):
+        """
+        Export both mop and maids raw data for client delivery. Uses internal mop and lifesight attributes by default.
+
+        Args:
+            external_mop (DataFrame): *optional*, override mop dataframe
+            external_lifesight (DataFrame): *optional*, override lifesight dataframe
+        """
+        # export impressions table
+        cols = [
+            "date_served",
+            "impressions",
+            "clicks",
+            "mobile_id",
+            "longitude",
+            "latitude",
+            "format",
+            "message",
+            "hourserved",
+        ]
+        filename = f"Export_MOP_{self.project_id}_{self.campaign_id}"
+        mop_data = external_mop if not external_mop.empty else self.mop
+        assert not mop_data.empty, "no mop data provided!"
+        mop_data[cols].to_csv(
+            f"raw/{filename}.zip",
+            compression=dict(method="zip", archive_name=f"{filename}.csv"),
+            index=False,
+        )
+
+        # export maids table
+        cols = [
+            "mobile_id",
+            "devicetype",
+            "idtype",
+            "make",
+            "model",
+            "os",
+            "osver",
+            "devicecost",
+            "homecountry",
+            "workgeohash",
+            "worklat",
+            "worklong",
+            "carriers",
+            "homegeohash",
+            "homelat",
+            "homelong",
+            "travelcountries",
+            "gender",
+            "deviceage",
+            "yob",
+            "age",
+        ]
+        filename = f"Export_MAIDS_{self.project_id}_{self.campaign_id}"
+        life_data = (
+            external_lifesight if not external_lifesight.empty else self.lifesight
+        )
+        assert not life_data.empty, "no lifesight data provided!"
+        life_data[cols].drop_duplicates(subset=["mobile_id"]).to_csv(
+            f"raw/{filename}.zip",
+            compression=dict(method="zip", archive_name=f"{filename}.csv"),
+            index=False,
+        )
+
 
 def get_maids_data(df: pd.DataFrame) -> tuple:
     """
@@ -447,7 +525,7 @@ def get_maids_data(df: pd.DataFrame) -> tuple:
         past_impressions(DataFrame): all geolocated past impressions for those maids (from public.geoloc_impr table)
         lifesight(DataFrame): all lifesight data for those maids (from public.lifesight_raw_2)
     """
-    assert 'mobile_id' in df, "'mobile_id' column not found if DataFrame"
+    assert "mobile_id" in df, "'mobile_id' column not found if DataFrame"
 
     db = DbConnection("../secrets.yaml")
 
@@ -460,22 +538,26 @@ def get_maids_data(df: pd.DataFrame) -> tuple:
     )
 
     print("\ndownloading past impressions")
-    past_impressions = db.query("""
+    past_impressions = db.query(
+        """
     select *
     from geoloc_impr gi
     inner join (select mobile_id from maids_manual) as m 
     on gi.mobile_id = m.mobile_id
-    """)
-    print("found", len(past_impressions), 'past impressions')
+    """
+    )
+    print("found", len(past_impressions), "past impressions")
 
     print("\ndownloading lifesight data")
-    lifesight = db.query("""
+    lifesight = db.query(
+        """
     select *
     from lifesight_raw_2 lr
     inner join (select mobile_id from maids_manual) as m 
     on lr.mobile_id = m.mobile_id
-    """)
-    print("found", len(lifesight), 'entries')
+    """
+    )
+    print("found", len(lifesight), "entries")
 
     return past_impressions, lifesight
 
