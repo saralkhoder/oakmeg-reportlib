@@ -21,22 +21,34 @@ data = datamodule.Data('path-to-secrets.yaml', 'NT28')
 data.load_all()
 ```
 
+secrets.yaml file structure
+```yaml
+rds:
+  dbuser: <usr>
+  dbpassword: <pwd>
+  dbhost: <host>
+  dbport: <port>
+  dbdatabase: postgres
+```
+
 Display **targeting map**
 ```python
 maps.AtomMap(maps.Tile.TERRAIN).add_aois(data.aois).show()
 ```
 
-Compute **overall performance** and **performance by AOI**
+Compute campaign **overall performance**
 ```python
 performance.overview(data.dash)
-```
-```python
-performance.overview(data.dash, by='aoi')
 ```
 
 Display **daily impressions and CTR**
 ```python
 performance.plot_by(data.dash, 'date_served')
+```
+
+Save performance per aoi as a **PowerPoint table**
+```python
+ppt.save_as_table(performance.overview(data.dash, by='aoi'), to='perf_by_aoi')
 ```
 
 Look in the documentation for a full list of functionalities !
@@ -59,3 +71,5 @@ git push
 ```
 
 Create a pull request for this branch and submit code for review.
+
+Got to [this page](https://docs.github.com/en/github/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-branches) to learn more about branches.
