@@ -3,8 +3,17 @@
 ## Installation
 Install the oakmeg **reportlib** package 
 ```bash
-pip install git+ssh://git@github.com/MCS-Atom/oakmeg-reportlib.git
+pip install git+https://github.com/gaspardfeuvray/oakmeg-reportlib.git
 ```
+
+or in jupyter notebook
+
+```python
+import sys
+!{sys.executable} -m pip install git+https://github.com/gaspardfeuvray/oakmeg-reportlib.git
+```
+
+
 
 *If you have not switched to SSH authentication yet, follow [this page](https://docs.github.com/en/github/authenticating-to-github/connecting-to-github-with-ssh) first*
 
