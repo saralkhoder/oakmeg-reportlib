@@ -33,6 +33,7 @@ import webbrowser
 from enum import Enum
 
 
+&#34;&#34;&#34;
 class Color(Enum):
     LIGHTGREY = &#34;#D0D6D9&#34;
     GREY = &#34;#9E9E9E&#34;
@@ -44,14 +45,39 @@ class Color(Enum):
     ORANGE = &#34;#F08935&#34;
     GREEN = &#34;#5DBD48&#34;
     PINK = &#34;#DE89FA&#34;
+&#34;&#34;&#34;
+
+class Color(Enum):
+    LIGHTGREY = &#34;#D0D6D9&#34;
+    GREY = &#34;#B8BFBF&#34;
+    DARKGREY = &#34;#5E5E5E&#34;
+    BLUE = &#34;#415AA3&#34;
+    LIGHTBLUE = &#34;#55BDFF&#34;
+    YELLOW = &#34;#E1D798&#34;
+    DARKYELLOW = &#34;#DB9A00&#34;
+    ORANGE = &#34;#F08935&#34;
+    GREEN = &#34;#67A86B&#34;
+    PINK = &#34;#DE89FA&#34;
+    BROWN = &#34;#675645&#34;
 
 
 PALETTE = [
     Color.BLUE.value,
-    Color.YELLOW.value,
     Color.GREEN.value,
+    Color.YELLOW.value,
+    Color.BROWN.value,
     Color.LIGHTGREY.value,
+    Color.LIGHTBLUE.value,
+    Color.DARKGREY.value
 ]
+
+#PALETTE = [
+#    &#39;#415AA3&#39;,
+#    &#39;#67A86B&#39;,
+#    &#39;#E1D798&#39;,
+#    &#39;#675645&#39;,
+#    &#39;#B8BFBF&#39;
+#]
 
 PALETTE_BINARY = [
     Color.ORANGE.value,
@@ -139,6 +165,10 @@ def open_documentation():
 <dd>
 <div class="desc"></div>
 </dd>
+<dt id="reportlib.utils.Color.BROWN"><code class="name">var <span class="ident">BROWN</span></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
 <dt id="reportlib.utils.Color.DARKGREY"><code class="name">var <span class="ident">DARKGREY</span></code></dt>
 <dd>
 <div class="desc"></div>
@@ -202,6 +232,7 @@ def open_documentation():
 <h4><code><a title="reportlib.utils.Color" href="#reportlib.utils.Color">Color</a></code></h4>
 <ul class="two-column">
 <li><code><a title="reportlib.utils.Color.BLUE" href="#reportlib.utils.Color.BLUE">BLUE</a></code></li>
+<li><code><a title="reportlib.utils.Color.BROWN" href="#reportlib.utils.Color.BROWN">BROWN</a></code></li>
 <li><code><a title="reportlib.utils.Color.DARKGREY" href="#reportlib.utils.Color.DARKGREY">DARKGREY</a></code></li>
 <li><code><a title="reportlib.utils.Color.DARKYELLOW" href="#reportlib.utils.Color.DARKYELLOW">DARKYELLOW</a></code></li>
 <li><code><a title="reportlib.utils.Color.GREEN" href="#reportlib.utils.Color.GREEN">GREEN</a></code></li>

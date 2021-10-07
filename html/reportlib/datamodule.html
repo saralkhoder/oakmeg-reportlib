@@ -308,14 +308,13 @@ class Data:
                         print(&#34;no file for&#34;, f.name)
 
         mop = pd.concat(dataframes, axis=0)
-
+        print(mop.shape)
         mop.columns = mop.columns.str.lower()
         mop = mop.rename(
             columns={
                 &#34;device id&#34;: &#34;mobile_id&#34;,
                 &#34;date&#34;: &#34;date_served&#34;,
                 &#34;hour&#34;: &#34;hourserved&#34;,
-                &#34;placement&#34;: &#34;message&#34;,
             }
         )
 
@@ -497,10 +496,29 @@ class Data:
             &#34;format&#34;,
             &#34;message&#34;,
             &#34;hourserved&#34;,
+            &#39;keyword&#39;,
+            &#39;ad_language&#39;,
+            &#39;adtype&#39;,
+            &#39;message&#39;,
+            &#39;video_first_quartile&#39;,
+            &#39;video_midpoint&#39;,
+            &#39;video_third_quartile&#39;,
+            &#39;video_completions&#39;
         ]
         filename = f&#34;Export_MOP_{self.project_id}_{self.campaign_id}&#34;
         mop_data = external_mop if not external_mop.empty else self.mop
         assert not mop_data.empty, &#34;no mop data provided!&#34;
+
+        # TODO: revert
+        mop_data[&#39;keyword&#39;] = None
+        mop_data[&#39;ad_language&#39;] = None
+        mop_data[&#39;adtype&#39;] = None
+        mop_data[&#39;message&#39;] = None
+        mop_data[&#39;video_first_quartile&#39;] = None
+        mop_data[&#39;video_midpoint&#39;] = None
+        mop_data[&#39;video_third_quartile&#39;] = None
+        mop_data[&#39;video_completions&#39;] = None
+
         mop_data[cols].to_csv(
             f&#34;raw/{filename}.zip&#34;,
             compression=dict(method=&#34;zip&#34;, archive_name=f&#34;{filename}.csv&#34;),
@@ -931,14 +949,13 @@ lifesight(DataFrame): all lifesight data for those maids (from public.lifesight_
                         print(&#34;no file for&#34;, f.name)
 
         mop = pd.concat(dataframes, axis=0)
-
+        print(mop.shape)
         mop.columns = mop.columns.str.lower()
         mop = mop.rename(
             columns={
                 &#34;device id&#34;: &#34;mobile_id&#34;,
                 &#34;date&#34;: &#34;date_served&#34;,
                 &#34;hour&#34;: &#34;hourserved&#34;,
-                &#34;placement&#34;: &#34;message&#34;,
             }
         )
 
@@ -1120,10 +1137,29 @@ lifesight(DataFrame): all lifesight data for those maids (from public.lifesight_
             &#34;format&#34;,
             &#34;message&#34;,
             &#34;hourserved&#34;,
+            &#39;keyword&#39;,
+            &#39;ad_language&#39;,
+            &#39;adtype&#39;,
+            &#39;message&#39;,
+            &#39;video_first_quartile&#39;,
+            &#39;video_midpoint&#39;,
+            &#39;video_third_quartile&#39;,
+            &#39;video_completions&#39;
         ]
         filename = f&#34;Export_MOP_{self.project_id}_{self.campaign_id}&#34;
         mop_data = external_mop if not external_mop.empty else self.mop
         assert not mop_data.empty, &#34;no mop data provided!&#34;
+
+        # TODO: revert
+        mop_data[&#39;keyword&#39;] = None
+        mop_data[&#39;ad_language&#39;] = None
+        mop_data[&#39;adtype&#39;] = None
+        mop_data[&#39;message&#39;] = None
+        mop_data[&#39;video_first_quartile&#39;] = None
+        mop_data[&#39;video_midpoint&#39;] = None
+        mop_data[&#39;video_third_quartile&#39;] = None
+        mop_data[&#39;video_completions&#39;] = None
+
         mop_data[cols].to_csv(
             f&#34;raw/{filename}.zip&#34;,
             compression=dict(method=&#34;zip&#34;, archive_name=f&#34;{filename}.csv&#34;),
@@ -1208,10 +1244,29 @@ Index: [])</span>
         &#34;format&#34;,
         &#34;message&#34;,
         &#34;hourserved&#34;,
+        &#39;keyword&#39;,
+        &#39;ad_language&#39;,
+        &#39;adtype&#39;,
+        &#39;message&#39;,
+        &#39;video_first_quartile&#39;,
+        &#39;video_midpoint&#39;,
+        &#39;video_third_quartile&#39;,
+        &#39;video_completions&#39;
     ]
     filename = f&#34;Export_MOP_{self.project_id}_{self.campaign_id}&#34;
     mop_data = external_mop if not external_mop.empty else self.mop
     assert not mop_data.empty, &#34;no mop data provided!&#34;
+
+    # TODO: revert
+    mop_data[&#39;keyword&#39;] = None
+    mop_data[&#39;ad_language&#39;] = None
+    mop_data[&#39;adtype&#39;] = None
+    mop_data[&#39;message&#39;] = None
+    mop_data[&#39;video_first_quartile&#39;] = None
+    mop_data[&#39;video_midpoint&#39;] = None
+    mop_data[&#39;video_third_quartile&#39;] = None
+    mop_data[&#39;video_completions&#39;] = None
+
     mop_data[cols].to_csv(
         f&#34;raw/{filename}.zip&#34;,
         compression=dict(method=&#34;zip&#34;, archive_name=f&#34;{filename}.csv&#34;),
@@ -1344,14 +1399,13 @@ Index: [])</span>
                     print(&#34;no file for&#34;, f.name)
 
     mop = pd.concat(dataframes, axis=0)
-
+    print(mop.shape)
     mop.columns = mop.columns.str.lower()
     mop = mop.rename(
         columns={
             &#34;device id&#34;: &#34;mobile_id&#34;,
             &#34;date&#34;: &#34;date_served&#34;,
             &#34;hour&#34;: &#34;hourserved&#34;,
-            &#34;placement&#34;: &#34;message&#34;,
         }
     )
 

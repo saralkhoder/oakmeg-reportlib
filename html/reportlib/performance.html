@@ -44,10 +44,7 @@ class _Palette(Enum):
     CTR = Color.GREEN.value
 
 
-def overview(
-    df: pd.DataFrame,
-    by: str = None
-):
+def overview(df: pd.DataFrame, by: str = None):
     &#34;&#34;&#34;
     Compute **impressions**, **ctr** and **reach** (if available), aggregated or broken down
 
@@ -61,10 +58,10 @@ def overview(
     has_reach = &#34;mobile_id&#34; in df
 
     if not by:
-        result = df[[&#39;impressions&#39;, &#39;clicks&#39;]].sum()
-        result[&#39;ctr&#39;] = result[&#39;clicks&#39;] / result[&#39;impressions&#39;]
+        result = df[[&#34;impressions&#34;, &#34;clicks&#34;]].sum()
+        result[&#34;ctr&#34;] = result[&#34;clicks&#34;] / result[&#34;impressions&#34;]
         if has_reach:
-            result[&#39;reach&#39;] = result[&#39;mobile_id&#39;].nunique()
+            result[&#34;reach&#34;] = result[&#34;mobile_id&#34;].nunique()
 
         return result
 
@@ -84,17 +81,17 @@ def overview(
 
 
 def plot_by(
-    df: pd.DataFrame,
     column: str,
-    with_reach: bool = True,
+    dash: pd.DataFrame,
+    mop: pd.DataFrame = pd.DataFrame(),
     min_impressions: int = 20,
-    size: list = [750, 400],
+    size: list = [750, 350],
     sort_by: str = None,
     legend_position: str = &#34;left&#34;,
     save_to: str = None,
 ):
     &#34;&#34;&#34;
-    Plot a performance bar + line chart showing **impressions**, **reach** (optional) and **ctr**
+    Plot a performance bar + line chart showing **impressions** and **ctr**
 
     Can be plotted by day or by category like message
 
@@ -102,9 +99,9 @@ def plot_by(
         ``performance.plot_by(data.dash, &#39;date_served&#39;, legend_position=&#39;right&#39;, save_to=&#39;perf_daily&#39;)``
 
     Args:
-        df (DataFrame): input data, can be exploded or already aggregated
         column (str): the column name to plot by
-        with_reach (bool): *optional*, include reach
+        dash (DataFrame): dash data (for impressions and ctr)
+        mop (DataFrame): *optional*, mop data (for reach)
         min_impressions (number): *optional*, threshold under which impressions are not displayed
         size (list): *optional*, figure size, formatted as [width, height]
         sort_by (bool): *optional*, what column to sort the x-axis with
@@ -115,40 +112,40 @@ def plot_by(
         figure (plotly.graph_object.Figure)
     &#34;&#34;&#34;
     is_time_graph = column == &#34;date_served&#34;
-    has_clicks = &#34;clicks&#34; in df
 
-    with_reach = with_reach and &#34;mobile_id&#34; in df
-
-    # only add reach if MAIDs are available and with_reach is True
-    grouped = df.groupby([column], as_index=False, dropna=False).agg(
-        {
-            **{&#34;impressions&#34;: &#34;sum&#34;},
-            **({&#34;clicks&#34;: &#34;sum&#34;} if has_clicks else dict()),
-            **({&#34;mobile_id&#34;: lambda x: x.nunique()} if with_reach else dict()),
-        }
+    agg = dash.groupby(column, as_index=False).agg(
+        {&#34;impressions&#34;: &#34;sum&#34;, &#34;clicks&#34;: &#34;sum&#34;}
     )
-    if has_clicks:
-        grouped[&#34;ctr&#34;] = grouped[&#34;clicks&#34;] / grouped[&#34;impressions&#34;]
+    agg[&#34;ctr&#34;] = agg[&#34;clicks&#34;] / agg[&#34;impressions&#34;]
 
-    if not is_time_graph and sort_by:
-        grouped = grouped.sort_values(sort_by, ascending=False)
+    if not mop.empty:
+        agg2 = mop.groupby(column, as_index=False).agg(
+            {&#34;mobile_id&#34;: lambda m: m.nunique()}
+        )
+        agg = agg.merge(agg2, on=column)
 
     # Filter out dates with quasi zero impressions
-    grouped = grouped[grouped[&#34;impressions&#34;] &gt; min_impressions]
+    agg = agg[agg[&#34;impressions&#34;] &gt; min_impressions]
 
+    # Optionally sort
+    if not is_time_graph and sort_by:
+        agg = agg.sort_values(sort_by, ascending=False)
+
+    # Make figure
     fig = make_subplots(
         specs=[[{&#34;secondary_y&#34;: True}]],
         figure=go.Figure(layout=M0_LAYOUT),
     )
 
-    w_basis = np.asarray([1000 * 3600 * 19] * len(grouped[column]))
+    w_basis = np.asarray([1000 * 3600 * 19] * len(agg[column]))
 
+    # ADD TRACES
     # Impressions
     fig.add_trace(
         go.Bar(
             name=&#34;Impressions&#34;,
-            x=grouped[column],
-            y=grouped[&#34;impressions&#34;],
+            x=agg[column],
+            y=agg[&#34;impressions&#34;],
             marker_color=_Palette.IMPRESSIONS.value,
             offset=-w_basis / 2 if is_time_graph else -0.4,
         ),
@@ -156,12 +153,12 @@ def plot_by(
     )
 
     # Reach
-    if with_reach:
+    if &#34;mobile_id&#34; in agg.columns:
         fig.add_trace(
             go.Bar(
                 name=&#34;Reach&#34;,
-                x=grouped[column],
-                y=grouped[&#34;mobile_id&#34;],
+                x=agg[column],
+                y=agg[&#34;mobile_id&#34;],
                 marker_color=_Palette.REACH.value,
                 offset=-w_basis / 2 if is_time_graph else -0.4,
             ),
@@ -169,28 +166,27 @@ def plot_by(
         )
 
     # CTR
-    if has_clicks:
-        fig.add_trace(
-            go.Scatter(
-                x=grouped[column],
-                y=grouped[&#34;ctr&#34;],
-                name=&#34;CTR&#34;,
-                marker=dict(size=8)
-                if is_time_graph
-                else dict(
-                    size=18, symbol=&#34;line-ew&#34;, line=dict(color=_Palette.CTR.value, width=6)
-                ),
-                marker_color=_Palette.CTR.value,
-                mode=&#34;lines+markers&#34; if is_time_graph else &#34;markers&#34;,
-                line_shape=&#34;spline&#34;,
+    fig.add_trace(
+        go.Scatter(
+            x=agg[column],
+            y=agg[&#34;ctr&#34;],
+            name=&#34;CTR&#34;,
+            marker=dict(size=8)
+            if is_time_graph
+            else dict(
+                size=18, symbol=&#34;line-ew&#34;, line=dict(color=_Palette.CTR.value, width=6)
             ),
-            secondary_y=True,
-        )
+            marker_color=_Palette.CTR.value,
+            mode=&#34;lines+markers&#34; if is_time_graph else &#34;markers&#34;,
+            line_shape=&#34;spline&#34;,
+        ),
+        secondary_y=True,
+    )
 
     # Adjust layout
     fig.update_layout(
         yaxis=dict(tickformat=&#34;s&#34;),
-        yaxis2=dict(tickformat=&#34;0.2%&#34;, range=[0, grouped[&#34;ctr&#34;].max() * 1.5]) if has_clicks else dict(),
+        yaxis2=dict(tickformat=&#34;0.2%&#34;, range=[0, agg[&#34;ctr&#34;].max() * 1.5]),
         xaxis=dict(tickformat=&#34;%b %d&#34;, tickmode=&#34;auto&#34;),
         legend=dict(
             yanchor=&#34;top&#34;,
@@ -234,10 +230,7 @@ def plot_by(
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def overview(
-    df: pd.DataFrame,
-    by: str = None
-):
+<pre><code class="python">def overview(df: pd.DataFrame, by: str = None):
     &#34;&#34;&#34;
     Compute **impressions**, **ctr** and **reach** (if available), aggregated or broken down
 
@@ -251,10 +244,10 @@ def plot_by(
     has_reach = &#34;mobile_id&#34; in df
 
     if not by:
-        result = df[[&#39;impressions&#39;, &#39;clicks&#39;]].sum()
-        result[&#39;ctr&#39;] = result[&#39;clicks&#39;] / result[&#39;impressions&#39;]
+        result = df[[&#34;impressions&#34;, &#34;clicks&#34;]].sum()
+        result[&#34;ctr&#34;] = result[&#34;clicks&#34;] / result[&#34;impressions&#34;]
         if has_reach:
-            result[&#39;reach&#39;] = result[&#39;mobile_id&#39;].nunique()
+            result[&#34;reach&#34;] = result[&#34;mobile_id&#34;].nunique()
 
         return result
 
@@ -274,21 +267,23 @@ def plot_by(
 </details>
 </dd>
 <dt id="reportlib.performance.plot_by"><code class="name flex">
-<span>def <span class="ident">plot_by</span></span>(<span>df: pandas.core.frame.DataFrame, column: str, with_reach: bool = True, min_impressions: int = 20, size: list = [750, 400], sort_by: str = None, legend_position: str = 'left', save_to: str = None)</span>
+<span>def <span class="ident">plot_by</span></span>(<span>column: str, dash: pandas.core.frame.DataFrame, mop: pandas.core.frame.DataFrame = Empty DataFrame
+Columns: []
+Index: [], min_impressions: int = 20, size: list = [750, 350], sort_by: str = None, legend_position: str = 'left', save_to: str = None)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Plot a performance bar + line chart showing <strong>impressions</strong>, <strong>reach</strong> (optional) and <strong>ctr</strong></p>
+<div class="desc"><p>Plot a performance bar + line chart showing <strong>impressions</strong> and <strong>ctr</strong></p>
 <p>Can be plotted by day or by category like message</p>
 <h2 id="usage">Usage</h2>
 <p><code>performance.plot_by(data.dash, 'date_served', legend_position='right', save_to='perf_daily')</code></p>
 <h2 id="args">Args</h2>
 <dl>
-<dt><strong><code>df</code></strong> :&ensp;<code>DataFrame</code></dt>
-<dd>input data, can be exploded or already aggregated</dd>
 <dt><strong><code>column</code></strong> :&ensp;<code>str</code></dt>
 <dd>the column name to plot by</dd>
-<dt><strong><code>with_reach</code></strong> :&ensp;<code>bool</code></dt>
-<dd><em>optional</em>, include reach</dd>
+<dt><strong><code>dash</code></strong> :&ensp;<code>DataFrame</code></dt>
+<dd>dash data (for impressions and ctr)</dd>
+<dt><strong><code>mop</code></strong> :&ensp;<code>DataFrame</code></dt>
+<dd><em>optional</em>, mop data (for reach)</dd>
 <dt><strong><code>min_impressions</code></strong> :&ensp;<code>number</code></dt>
 <dd><em>optional</em>, threshold under which impressions are not displayed</dd>
 <dt><strong><code>size</code></strong> :&ensp;<code>list</code></dt>
@@ -306,17 +301,17 @@ def plot_by(
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def plot_by(
-    df: pd.DataFrame,
     column: str,
-    with_reach: bool = True,
+    dash: pd.DataFrame,
+    mop: pd.DataFrame = pd.DataFrame(),
     min_impressions: int = 20,
-    size: list = [750, 400],
+    size: list = [750, 350],
     sort_by: str = None,
     legend_position: str = &#34;left&#34;,
     save_to: str = None,
 ):
     &#34;&#34;&#34;
-    Plot a performance bar + line chart showing **impressions**, **reach** (optional) and **ctr**
+    Plot a performance bar + line chart showing **impressions** and **ctr**
 
     Can be plotted by day or by category like message
 
@@ -324,9 +319,9 @@ def plot_by(
         ``performance.plot_by(data.dash, &#39;date_served&#39;, legend_position=&#39;right&#39;, save_to=&#39;perf_daily&#39;)``
 
     Args:
-        df (DataFrame): input data, can be exploded or already aggregated
         column (str): the column name to plot by
-        with_reach (bool): *optional*, include reach
+        dash (DataFrame): dash data (for impressions and ctr)
+        mop (DataFrame): *optional*, mop data (for reach)
         min_impressions (number): *optional*, threshold under which impressions are not displayed
         size (list): *optional*, figure size, formatted as [width, height]
         sort_by (bool): *optional*, what column to sort the x-axis with
@@ -337,40 +332,40 @@ def plot_by(
         figure (plotly.graph_object.Figure)
     &#34;&#34;&#34;
     is_time_graph = column == &#34;date_served&#34;
-    has_clicks = &#34;clicks&#34; in df
 
-    with_reach = with_reach and &#34;mobile_id&#34; in df
-
-    # only add reach if MAIDs are available and with_reach is True
-    grouped = df.groupby([column], as_index=False, dropna=False).agg(
-        {
-            **{&#34;impressions&#34;: &#34;sum&#34;},
-            **({&#34;clicks&#34;: &#34;sum&#34;} if has_clicks else dict()),
-            **({&#34;mobile_id&#34;: lambda x: x.nunique()} if with_reach else dict()),
-        }
+    agg = dash.groupby(column, as_index=False).agg(
+        {&#34;impressions&#34;: &#34;sum&#34;, &#34;clicks&#34;: &#34;sum&#34;}
     )
-    if has_clicks:
-        grouped[&#34;ctr&#34;] = grouped[&#34;clicks&#34;] / grouped[&#34;impressions&#34;]
+    agg[&#34;ctr&#34;] = agg[&#34;clicks&#34;] / agg[&#34;impressions&#34;]
 
-    if not is_time_graph and sort_by:
-        grouped = grouped.sort_values(sort_by, ascending=False)
+    if not mop.empty:
+        agg2 = mop.groupby(column, as_index=False).agg(
+            {&#34;mobile_id&#34;: lambda m: m.nunique()}
+        )
+        agg = agg.merge(agg2, on=column)
 
     # Filter out dates with quasi zero impressions
-    grouped = grouped[grouped[&#34;impressions&#34;] &gt; min_impressions]
+    agg = agg[agg[&#34;impressions&#34;] &gt; min_impressions]
 
+    # Optionally sort
+    if not is_time_graph and sort_by:
+        agg = agg.sort_values(sort_by, ascending=False)
+
+    # Make figure
     fig = make_subplots(
         specs=[[{&#34;secondary_y&#34;: True}]],
         figure=go.Figure(layout=M0_LAYOUT),
     )
 
-    w_basis = np.asarray([1000 * 3600 * 19] * len(grouped[column]))
+    w_basis = np.asarray([1000 * 3600 * 19] * len(agg[column]))
 
+    # ADD TRACES
     # Impressions
     fig.add_trace(
         go.Bar(
             name=&#34;Impressions&#34;,
-            x=grouped[column],
-            y=grouped[&#34;impressions&#34;],
+            x=agg[column],
+            y=agg[&#34;impressions&#34;],
             marker_color=_Palette.IMPRESSIONS.value,
             offset=-w_basis / 2 if is_time_graph else -0.4,
         ),
@@ -378,12 +373,12 @@ def plot_by(
     )
 
     # Reach
-    if with_reach:
+    if &#34;mobile_id&#34; in agg.columns:
         fig.add_trace(
             go.Bar(
                 name=&#34;Reach&#34;,
-                x=grouped[column],
-                y=grouped[&#34;mobile_id&#34;],
+                x=agg[column],
+                y=agg[&#34;mobile_id&#34;],
                 marker_color=_Palette.REACH.value,
                 offset=-w_basis / 2 if is_time_graph else -0.4,
             ),
@@ -391,28 +386,27 @@ def plot_by(
         )
 
     # CTR
-    if has_clicks:
-        fig.add_trace(
-            go.Scatter(
-                x=grouped[column],
-                y=grouped[&#34;ctr&#34;],
-                name=&#34;CTR&#34;,
-                marker=dict(size=8)
-                if is_time_graph
-                else dict(
-                    size=18, symbol=&#34;line-ew&#34;, line=dict(color=_Palette.CTR.value, width=6)
-                ),
-                marker_color=_Palette.CTR.value,
-                mode=&#34;lines+markers&#34; if is_time_graph else &#34;markers&#34;,
-                line_shape=&#34;spline&#34;,
+    fig.add_trace(
+        go.Scatter(
+            x=agg[column],
+            y=agg[&#34;ctr&#34;],
+            name=&#34;CTR&#34;,
+            marker=dict(size=8)
+            if is_time_graph
+            else dict(
+                size=18, symbol=&#34;line-ew&#34;, line=dict(color=_Palette.CTR.value, width=6)
             ),
-            secondary_y=True,
-        )
+            marker_color=_Palette.CTR.value,
+            mode=&#34;lines+markers&#34; if is_time_graph else &#34;markers&#34;,
+            line_shape=&#34;spline&#34;,
+        ),
+        secondary_y=True,
+    )
 
     # Adjust layout
     fig.update_layout(
         yaxis=dict(tickformat=&#34;s&#34;),
-        yaxis2=dict(tickformat=&#34;0.2%&#34;, range=[0, grouped[&#34;ctr&#34;].max() * 1.5]) if has_clicks else dict(),
+        yaxis2=dict(tickformat=&#34;0.2%&#34;, range=[0, agg[&#34;ctr&#34;].max() * 1.5]),
         xaxis=dict(tickformat=&#34;%b %d&#34;, tickmode=&#34;auto&#34;),
         legend=dict(
             yanchor=&#34;top&#34;,
