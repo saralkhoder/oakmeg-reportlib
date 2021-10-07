@@ -4,6 +4,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 from reportlib._plotly_utils import save_fig_to
+from reportlib.utils import PALETTE
 
 
 def alpha3to2(alpha3: str) -> str:
@@ -51,6 +52,7 @@ def homecountry_pie(df: pd.DataFrame, countries: list = None, save_to: str = Non
                 values=value_counts.values,
                 textinfo="label+value",
                 insidetextorientation="horizontal",
+                marker=dict(colors=PALETTE)
             )
         ]
     )
@@ -123,6 +125,7 @@ def travel_sunburst(df, home_countries=None, travel_countries=None, save_to=None
             branchvalues="total",
             textinfo="label",
             insidetextorientation="horizontal",
+            marker=dict(colors=PALETTE),
         ),
     )
 

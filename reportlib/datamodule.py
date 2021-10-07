@@ -279,14 +279,13 @@ class Data:
                         print("no file for", f.name)
 
         mop = pd.concat(dataframes, axis=0)
-
+        print(mop.shape)
         mop.columns = mop.columns.str.lower()
         mop = mop.rename(
             columns={
                 "device id": "mobile_id",
                 "date": "date_served",
                 "hour": "hourserved",
-                "placement": "message",
             }
         )
 
@@ -468,10 +467,29 @@ class Data:
             "format",
             "message",
             "hourserved",
+            'keyword',
+            'ad_language',
+            'adtype',
+            'message',
+            'video_first_quartile',
+            'video_midpoint',
+            'video_third_quartile',
+            'video_completions'
         ]
         filename = f"Export_MOP_{self.project_id}_{self.campaign_id}"
         mop_data = external_mop if not external_mop.empty else self.mop
         assert not mop_data.empty, "no mop data provided!"
+
+        # TODO: revert
+        mop_data['keyword'] = None
+        mop_data['ad_language'] = None
+        mop_data['adtype'] = None
+        mop_data['message'] = None
+        mop_data['video_first_quartile'] = None
+        mop_data['video_midpoint'] = None
+        mop_data['video_third_quartile'] = None
+        mop_data['video_completions'] = None
+
         mop_data[cols].to_csv(
             f"raw/{filename}.zip",
             compression=dict(method="zip", archive_name=f"{filename}.csv"),
