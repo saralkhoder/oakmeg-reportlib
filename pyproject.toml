@@ -3,6 +3,7 @@ name = "reportlib"
 version = "0.1.0"
 description = ""
 authors = ["gaspardfeuvray <gaspard.feuvray@gmail.com>"]
+include = ["html/reportlib/*.html"]
 
 [tool.poetry.dependencies]
 python = ">=3.7.1"
