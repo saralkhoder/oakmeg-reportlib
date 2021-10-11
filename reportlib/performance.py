@@ -10,8 +10,8 @@ from reportlib._plotly_utils import save_fig_to, M0_LAYOUT
 
 
 class _Palette(Enum):
-    IMPRESSIONS = Color.BLUE.value
-    REACH = Color.LIGHTBLUE.value
+    IMPRESSIONS = Color.BROWN.value
+    REACH = Color.YELLOW.value
     CTR = Color.GREEN.value
 
 
