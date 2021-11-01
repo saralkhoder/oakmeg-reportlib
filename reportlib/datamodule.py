@@ -89,6 +89,8 @@ class Data:
         self.lifesight = pd.DataFrame()
         self.survey = pd.DataFrame()
 
+        self.reach_ratio = None  # mop reach / mop impressions
+
         self.db = DbConnection(secret_yaml_path)
 
     def _get_aois_filter(self) -> dict:
@@ -286,8 +288,11 @@ class Data:
                 "device id": "mobile_id",
                 "date": "date_served",
                 "hour": "hourserved",
+                "loc": "aoi"
             }
         )
+
+        mop["date_served"] = pd.to_datetime(mop["date_served"])
 
         aoi_exploded = (
             mop["placement"]
@@ -300,7 +305,11 @@ class Data:
         mop = pd.concat([mop, aoi_exploded], axis=1)
 
         self.mop = mop
-        print(f"- {len(mop)} impressions found in blis_raw folder")
+
+        self.reach_ratio = mop['mobile_id'].nunique() / mop['impressions'].sum()
+
+        print(f"- {mop['impressions'].sum()} impressions found in blis_raw folder")
+        print("- reach ratio: {:.5f}".format(self.reach_ratio))
 
     def load_mop(self) -> None:
         """
@@ -356,8 +365,10 @@ class Data:
                 )
             mop["message"] = mop["message"].apply(self._extract_message)
 
-            print(f"- {len(mop)} impressions found in public.mop_table")
+            print(f"- {mop['impressions'].sum()} impressions found in public.mop_table")
             self.mop = mop.drop(columns=["message.1"])
+
+            self.reach_ratio = mop['mobile_id'].nunique() / mop['impressions'].sum()
 
         else:
             print(f"x no dash data")
