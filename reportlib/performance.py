@@ -15,26 +15,34 @@ class _Palette(Enum):
     CTR = Color.GREEN.value
 
 
-def overview(df: pd.DataFrame, by: str = None):
+def overview(df: pd.DataFrame, reach_ratio: float = None, by: str = None):
     """
-    Compute **impressions**, **ctr** and **reach** (if available), aggregated or broken down
+    Compute **impressions**, **ctr** and **reach** (if reach ratio provided), aggregated or broken down
 
     Usage:
         ``performance.overview(data.dash, by='aoi')``
 
     Args:
         df (DataFrame): input data, can be exploded or already aggregated
+        reach_ratio (float): the reach ratio from loaded mop data
         by (str): *optional*, the column name to break down by
     """
-    has_reach = "mobile_id" in df
+
+    if not reach_ratio:
+        print('add reach ratio argument to display reach')
 
     if not by:
         result = df[["impressions", "clicks"]].sum()
+        result["impressions"] = result["impressions"]
+        result["clicks"] = result["clicks"]
         result["ctr"] = result["clicks"] / result["impressions"]
-        if has_reach:
-            result["reach"] = result["mobile_id"].nunique()
+        if reach_ratio:
+            result["reach"] = (reach_ratio * result["impressions"])
 
-        return result
+        typesdict = {'impressions': 'int', 'clicks': 'int'}
+        if reach_ratio:
+            typesdict['reach'] = 'int'
+        return pd.DataFrame(result).transpose().astype(typesdict)
 
     else:
         # only add reach if MAIDs are available and with_reach is True
@@ -42,11 +50,16 @@ def overview(df: pd.DataFrame, by: str = None):
             {
                 **{"impressions": "sum"},
                 **({"clicks": "sum"} if "clicks" in df else dict()),
-                **({"mobile_id": lambda x: x.nunique()} if has_reach else dict()),
             }
         )
+        grouped["impressions"] = grouped["impressions"].astype("int")
+        grouped["clicks"] = grouped["clicks"].astype("int")
+
         if "clicks" in df:
             grouped["ctr"] = grouped["clicks"] / grouped["impressions"]
+
+        if reach_ratio:
+            grouped["reach"] = (reach_ratio * grouped["impressions"]).astype("int")
 
         return grouped
 
@@ -54,7 +67,7 @@ def overview(df: pd.DataFrame, by: str = None):
 def plot_by(
     column: str,
     dash: pd.DataFrame,
-    mop: pd.DataFrame = pd.DataFrame(),
+    reach_ratio: float = None,
     min_impressions: int = 20,
     size: list = [750, 350],
     sort_by: str = None,
@@ -72,7 +85,7 @@ def plot_by(
     Args:
         column (str): the column name to plot by
         dash (DataFrame): dash data (for impressions and ctr)
-        mop (DataFrame): *optional*, mop data (for reach)
+        reach_ratio (float): *optional*, reach ratio for displaying reach
         min_impressions (number): *optional*, threshold under which impressions are not displayed
         size (list): *optional*, figure size, formatted as [width, height]
         sort_by (bool): *optional*, what column to sort the x-axis with
@@ -89,11 +102,8 @@ def plot_by(
     )
     agg["ctr"] = agg["clicks"] / agg["impressions"]
 
-    if not mop.empty:
-        agg2 = mop.groupby(column, as_index=False).agg(
-            {"mobile_id": lambda m: m.nunique()}
-        )
-        agg = agg.merge(agg2, on=column)
+    if reach_ratio:
+        agg["mobile_id"] = agg["impressions"] * reach_ratio
 
     # Filter out dates with quasi zero impressions
     agg = agg[agg["impressions"] > min_impressions]
