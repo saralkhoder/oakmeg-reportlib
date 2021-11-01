@@ -39,31 +39,39 @@ from reportlib._plotly_utils import save_fig_to, M0_LAYOUT
 
 
 class _Palette(Enum):
-    IMPRESSIONS = Color.BLUE.value
-    REACH = Color.LIGHTBLUE.value
+    IMPRESSIONS = Color.BROWN.value
+    REACH = Color.YELLOW.value
     CTR = Color.GREEN.value
 
 
-def overview(df: pd.DataFrame, by: str = None):
+def overview(df: pd.DataFrame, reach_ratio: float = None, by: str = None):
     &#34;&#34;&#34;
-    Compute **impressions**, **ctr** and **reach** (if available), aggregated or broken down
+    Compute **impressions**, **ctr** and **reach** (if reach ratio provided), aggregated or broken down
 
     Usage:
         ``performance.overview(data.dash, by=&#39;aoi&#39;)``
 
     Args:
         df (DataFrame): input data, can be exploded or already aggregated
+        reach_ratio (float): the reach ratio from loaded mop data
         by (str): *optional*, the column name to break down by
     &#34;&#34;&#34;
-    has_reach = &#34;mobile_id&#34; in df
+
+    if not reach_ratio:
+        print(&#39;add reach ratio argument to display reach&#39;)
 
     if not by:
         result = df[[&#34;impressions&#34;, &#34;clicks&#34;]].sum()
+        result[&#34;impressions&#34;] = result[&#34;impressions&#34;]
+        result[&#34;clicks&#34;] = result[&#34;clicks&#34;]
         result[&#34;ctr&#34;] = result[&#34;clicks&#34;] / result[&#34;impressions&#34;]
-        if has_reach:
-            result[&#34;reach&#34;] = result[&#34;mobile_id&#34;].nunique()
+        if reach_ratio:
+            result[&#34;reach&#34;] = (reach_ratio * result[&#34;impressions&#34;])
 
-        return result
+        typesdict = {&#39;impressions&#39;: &#39;int&#39;, &#39;clicks&#39;: &#39;int&#39;}
+        if reach_ratio:
+            typesdict[&#39;reach&#39;] = &#39;int&#39;
+        return pd.DataFrame(result).transpose().astype(typesdict)
 
     else:
         # only add reach if MAIDs are available and with_reach is True
@@ -71,11 +79,16 @@ def overview(df: pd.DataFrame, by: str = None):
             {
                 **{&#34;impressions&#34;: &#34;sum&#34;},
                 **({&#34;clicks&#34;: &#34;sum&#34;} if &#34;clicks&#34; in df else dict()),
-                **({&#34;mobile_id&#34;: lambda x: x.nunique()} if has_reach else dict()),
             }
         )
+        grouped[&#34;impressions&#34;] = grouped[&#34;impressions&#34;].astype(&#34;int&#34;)
+        grouped[&#34;clicks&#34;] = grouped[&#34;clicks&#34;].astype(&#34;int&#34;)
+
         if &#34;clicks&#34; in df:
             grouped[&#34;ctr&#34;] = grouped[&#34;clicks&#34;] / grouped[&#34;impressions&#34;]
+
+        if reach_ratio:
+            grouped[&#34;reach&#34;] = (reach_ratio * grouped[&#34;impressions&#34;]).astype(&#34;int&#34;)
 
         return grouped
 
@@ -83,7 +96,7 @@ def overview(df: pd.DataFrame, by: str = None):
 def plot_by(
     column: str,
     dash: pd.DataFrame,
-    mop: pd.DataFrame = pd.DataFrame(),
+    reach_ratio: float = None,
     min_impressions: int = 20,
     size: list = [750, 350],
     sort_by: str = None,
@@ -101,7 +114,7 @@ def plot_by(
     Args:
         column (str): the column name to plot by
         dash (DataFrame): dash data (for impressions and ctr)
-        mop (DataFrame): *optional*, mop data (for reach)
+        reach_ratio (float): *optional*, reach ratio for displaying reach
         min_impressions (number): *optional*, threshold under which impressions are not displayed
         size (list): *optional*, figure size, formatted as [width, height]
         sort_by (bool): *optional*, what column to sort the x-axis with
@@ -118,11 +131,8 @@ def plot_by(
     )
     agg[&#34;ctr&#34;] = agg[&#34;clicks&#34;] / agg[&#34;impressions&#34;]
 
-    if not mop.empty:
-        agg2 = mop.groupby(column, as_index=False).agg(
-            {&#34;mobile_id&#34;: lambda m: m.nunique()}
-        )
-        agg = agg.merge(agg2, on=column)
+    if reach_ratio:
+        agg[&#34;mobile_id&#34;] = agg[&#34;impressions&#34;] * reach_ratio
 
     # Filter out dates with quasi zero impressions
     agg = agg[agg[&#34;impressions&#34;] &gt; min_impressions]
@@ -213,16 +223,18 @@ def plot_by(
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
 <dt id="reportlib.performance.overview"><code class="name flex">
-<span>def <span class="ident">overview</span></span>(<span>df: pandas.core.frame.DataFrame, by: str = None)</span>
+<span>def <span class="ident">overview</span></span>(<span>df: pandas.core.frame.DataFrame, reach_ratio: float = None, by: str = None)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Compute <strong>impressions</strong>, <strong>ctr</strong> and <strong>reach</strong> (if available), aggregated or broken down</p>
+<div class="desc"><p>Compute <strong>impressions</strong>, <strong>ctr</strong> and <strong>reach</strong> (if reach ratio provided), aggregated or broken down</p>
 <h2 id="usage">Usage</h2>
 <p><code>performance.overview(data.dash, by='aoi')</code></p>
 <h2 id="args">Args</h2>
 <dl>
 <dt><strong><code>df</code></strong> :&ensp;<code>DataFrame</code></dt>
 <dd>input data, can be exploded or already aggregated</dd>
+<dt><strong><code>reach_ratio</code></strong> :&ensp;<code>float</code></dt>
+<dd>the reach ratio from loaded mop data</dd>
 <dt><strong><code>by</code></strong> :&ensp;<code>str</code></dt>
 <dd><em>optional</em>, the column name to break down by</dd>
 </dl></div>
@@ -230,26 +242,34 @@ def plot_by(
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def overview(df: pd.DataFrame, by: str = None):
+<pre><code class="python">def overview(df: pd.DataFrame, reach_ratio: float = None, by: str = None):
     &#34;&#34;&#34;
-    Compute **impressions**, **ctr** and **reach** (if available), aggregated or broken down
+    Compute **impressions**, **ctr** and **reach** (if reach ratio provided), aggregated or broken down
 
     Usage:
         ``performance.overview(data.dash, by=&#39;aoi&#39;)``
 
     Args:
         df (DataFrame): input data, can be exploded or already aggregated
+        reach_ratio (float): the reach ratio from loaded mop data
         by (str): *optional*, the column name to break down by
     &#34;&#34;&#34;
-    has_reach = &#34;mobile_id&#34; in df
+
+    if not reach_ratio:
+        print(&#39;add reach ratio argument to display reach&#39;)
 
     if not by:
         result = df[[&#34;impressions&#34;, &#34;clicks&#34;]].sum()
+        result[&#34;impressions&#34;] = result[&#34;impressions&#34;]
+        result[&#34;clicks&#34;] = result[&#34;clicks&#34;]
         result[&#34;ctr&#34;] = result[&#34;clicks&#34;] / result[&#34;impressions&#34;]
-        if has_reach:
-            result[&#34;reach&#34;] = result[&#34;mobile_id&#34;].nunique()
+        if reach_ratio:
+            result[&#34;reach&#34;] = (reach_ratio * result[&#34;impressions&#34;])
 
-        return result
+        typesdict = {&#39;impressions&#39;: &#39;int&#39;, &#39;clicks&#39;: &#39;int&#39;}
+        if reach_ratio:
+            typesdict[&#39;reach&#39;] = &#39;int&#39;
+        return pd.DataFrame(result).transpose().astype(typesdict)
 
     else:
         # only add reach if MAIDs are available and with_reach is True
@@ -257,19 +277,22 @@ def plot_by(
             {
                 **{&#34;impressions&#34;: &#34;sum&#34;},
                 **({&#34;clicks&#34;: &#34;sum&#34;} if &#34;clicks&#34; in df else dict()),
-                **({&#34;mobile_id&#34;: lambda x: x.nunique()} if has_reach else dict()),
             }
         )
+        grouped[&#34;impressions&#34;] = grouped[&#34;impressions&#34;].astype(&#34;int&#34;)
+        grouped[&#34;clicks&#34;] = grouped[&#34;clicks&#34;].astype(&#34;int&#34;)
+
         if &#34;clicks&#34; in df:
             grouped[&#34;ctr&#34;] = grouped[&#34;clicks&#34;] / grouped[&#34;impressions&#34;]
+
+        if reach_ratio:
+            grouped[&#34;reach&#34;] = (reach_ratio * grouped[&#34;impressions&#34;]).astype(&#34;int&#34;)
 
         return grouped</code></pre>
 </details>
 </dd>
 <dt id="reportlib.performance.plot_by"><code class="name flex">
-<span>def <span class="ident">plot_by</span></span>(<span>column: str, dash: pandas.core.frame.DataFrame, mop: pandas.core.frame.DataFrame = Empty DataFrame
-Columns: []
-Index: [], min_impressions: int = 20, size: list = [750, 350], sort_by: str = None, legend_position: str = 'left', save_to: str = None)</span>
+<span>def <span class="ident">plot_by</span></span>(<span>column: str, dash: pandas.core.frame.DataFrame, reach_ratio: float = None, min_impressions: int = 20, size: list = [750, 350], sort_by: str = None, legend_position: str = 'left', save_to: str = None)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Plot a performance bar + line chart showing <strong>impressions</strong> and <strong>ctr</strong></p>
@@ -282,8 +305,8 @@ Index: [], min_impressions: int = 20, size: list = [750, 350], sort_by: s
 <dd>the column name to plot by</dd>
 <dt><strong><code>dash</code></strong> :&ensp;<code>DataFrame</code></dt>
 <dd>dash data (for impressions and ctr)</dd>
-<dt><strong><code>mop</code></strong> :&ensp;<code>DataFrame</code></dt>
-<dd><em>optional</em>, mop data (for reach)</dd>
+<dt><strong><code>reach_ratio</code></strong> :&ensp;<code>float</code></dt>
+<dd><em>optional</em>, reach ratio for displaying reach</dd>
 <dt><strong><code>min_impressions</code></strong> :&ensp;<code>number</code></dt>
 <dd><em>optional</em>, threshold under which impressions are not displayed</dd>
 <dt><strong><code>size</code></strong> :&ensp;<code>list</code></dt>
@@ -303,7 +326,7 @@ Index: [], min_impressions: int = 20, size: list = [750, 350], sort_by: s
 <pre><code class="python">def plot_by(
     column: str,
     dash: pd.DataFrame,
-    mop: pd.DataFrame = pd.DataFrame(),
+    reach_ratio: float = None,
     min_impressions: int = 20,
     size: list = [750, 350],
     sort_by: str = None,
@@ -321,7 +344,7 @@ Index: [], min_impressions: int = 20, size: list = [750, 350], sort_by: s
     Args:
         column (str): the column name to plot by
         dash (DataFrame): dash data (for impressions and ctr)
-        mop (DataFrame): *optional*, mop data (for reach)
+        reach_ratio (float): *optional*, reach ratio for displaying reach
         min_impressions (number): *optional*, threshold under which impressions are not displayed
         size (list): *optional*, figure size, formatted as [width, height]
         sort_by (bool): *optional*, what column to sort the x-axis with
@@ -338,11 +361,8 @@ Index: [], min_impressions: int = 20, size: list = [750, 350], sort_by: s
     )
     agg[&#34;ctr&#34;] = agg[&#34;clicks&#34;] / agg[&#34;impressions&#34;]
 
-    if not mop.empty:
-        agg2 = mop.groupby(column, as_index=False).agg(
-            {&#34;mobile_id&#34;: lambda m: m.nunique()}
-        )
-        agg = agg.merge(agg2, on=column)
+    if reach_ratio:
+        agg[&#34;mobile_id&#34;] = agg[&#34;impressions&#34;] * reach_ratio
 
     # Filter out dates with quasi zero impressions
     agg = agg[agg[&#34;impressions&#34;] &gt; min_impressions]

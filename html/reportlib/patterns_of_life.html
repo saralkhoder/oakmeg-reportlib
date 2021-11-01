@@ -71,7 +71,9 @@ def homecountry_pie(df: pd.DataFrame, countries: list = None, save_to: str = Non
     homecountries = df[&#34;homecountry&#34;].dropna().apply(alpha3to2)
     if countries:
         homecountries = homecountries[homecountries.isin(countries)]
+
     value_counts = homecountries.value_counts()
+    print(&#34;devices:&#34;, value_counts.sum())
 
     fig = go.Figure(
         data=[
@@ -80,7 +82,7 @@ def homecountry_pie(df: pd.DataFrame, countries: list = None, save_to: str = Non
                 values=value_counts.values,
                 textinfo=&#34;label+value&#34;,
                 insidetextorientation=&#34;horizontal&#34;,
-                marker=dict(colors=PALETTE)
+                marker=dict(colors=PALETTE),
             )
         ]
     )
@@ -115,7 +117,9 @@ def travel_sunburst(df, home_countries=None, travel_countries=None, save_to=None
         travel_countries (list): *optional*, the list of travel countries (iso alpha2) to include
         save_to (str): *optional*, save as png, don&#39;t write any extension here
     &#34;&#34;&#34;
-    exploded = _home_travel_data(df).explode(&#34;travelcountry&#34;)
+    home_travel_data = _home_travel_data(df)
+
+    exploded = home_travel_data.explode(&#34;travelcountry&#34;)
     grouped = exploded.groupby([&#34;homecountry&#34;, &#34;travelcountry&#34;], as_index=False).agg(
         &#34;count&#34;
     )
@@ -128,6 +132,18 @@ def travel_sunburst(df, home_countries=None, travel_countries=None, save_to=None
 
     if travel_countries:
         grouped = grouped[grouped[&#34;travelcountry&#34;].isin(travel_countries)]
+
+    # Compute number of devices
+    maids_count = home_travel_data
+    maids_count[&#34;homecountry&#34;] = maids_count[&#34;homecountry&#34;].apply(alpha3to2)
+    maids_count[&#34;travelcountry&#34;] = maids_count[&#34;travelcountry&#34;].apply(lambda t: frozenset(alpha3to2(c) for c in t))
+    maids_count[maids_count[&#34;homecountry&#34;].isin(home_countries)]
+    maids_count = maids_count[
+        maids_count[&#34;travelcountry&#34;].apply(
+            lambda t: len(t.intersection(frozenset(travel_countries))) &gt; 0
+        )
+    ]
+    print(&#39;devices:&#39;, maids_count[&#39;mobile_id&#39;].nunique())
 
     # build labels
     sun_data = px.sunburst(
@@ -246,7 +262,9 @@ def travel_sunburst(df, home_countries=None, travel_countries=None, save_to=None
     homecountries = df[&#34;homecountry&#34;].dropna().apply(alpha3to2)
     if countries:
         homecountries = homecountries[homecountries.isin(countries)]
+
     value_counts = homecountries.value_counts()
+    print(&#34;devices:&#34;, value_counts.sum())
 
     fig = go.Figure(
         data=[
@@ -255,7 +273,7 @@ def travel_sunburst(df, home_countries=None, travel_countries=None, save_to=None
                 values=value_counts.values,
                 textinfo=&#34;label+value&#34;,
                 insidetextorientation=&#34;horizontal&#34;,
-                marker=dict(colors=PALETTE)
+                marker=dict(colors=PALETTE),
             )
         ]
     )
@@ -301,7 +319,9 @@ def travel_sunburst(df, home_countries=None, travel_countries=None, save_to=None
         travel_countries (list): *optional*, the list of travel countries (iso alpha2) to include
         save_to (str): *optional*, save as png, don&#39;t write any extension here
     &#34;&#34;&#34;
-    exploded = _home_travel_data(df).explode(&#34;travelcountry&#34;)
+    home_travel_data = _home_travel_data(df)
+
+    exploded = home_travel_data.explode(&#34;travelcountry&#34;)
     grouped = exploded.groupby([&#34;homecountry&#34;, &#34;travelcountry&#34;], as_index=False).agg(
         &#34;count&#34;
     )
@@ -314,6 +334,18 @@ def travel_sunburst(df, home_countries=None, travel_countries=None, save_to=None
 
     if travel_countries:
         grouped = grouped[grouped[&#34;travelcountry&#34;].isin(travel_countries)]
+
+    # Compute number of devices
+    maids_count = home_travel_data
+    maids_count[&#34;homecountry&#34;] = maids_count[&#34;homecountry&#34;].apply(alpha3to2)
+    maids_count[&#34;travelcountry&#34;] = maids_count[&#34;travelcountry&#34;].apply(lambda t: frozenset(alpha3to2(c) for c in t))
+    maids_count[maids_count[&#34;homecountry&#34;].isin(home_countries)]
+    maids_count = maids_count[
+        maids_count[&#34;travelcountry&#34;].apply(
+            lambda t: len(t.intersection(frozenset(travel_countries))) &gt; 0
+        )
+    ]
+    print(&#39;devices:&#39;, maids_count[&#39;mobile_id&#39;].nunique())
 
     # build labels
     sun_data = px.sunburst(
