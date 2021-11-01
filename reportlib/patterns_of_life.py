@@ -43,7 +43,9 @@ def homecountry_pie(df: pd.DataFrame, countries: list = None, save_to: str = Non
     homecountries = df["homecountry"].dropna().apply(alpha3to2)
     if countries:
         homecountries = homecountries[homecountries.isin(countries)]
+
     value_counts = homecountries.value_counts()
+    print("devices:", value_counts.sum())
 
     fig = go.Figure(
         data=[
@@ -52,7 +54,7 @@ def homecountry_pie(df: pd.DataFrame, countries: list = None, save_to: str = Non
                 values=value_counts.values,
                 textinfo="label+value",
                 insidetextorientation="horizontal",
-                marker=dict(colors=PALETTE)
+                marker=dict(colors=PALETTE),
             )
         ]
     )
@@ -87,7 +89,9 @@ def travel_sunburst(df, home_countries=None, travel_countries=None, save_to=None
         travel_countries (list): *optional*, the list of travel countries (iso alpha2) to include
         save_to (str): *optional*, save as png, don't write any extension here
     """
-    exploded = _home_travel_data(df).explode("travelcountry")
+    home_travel_data = _home_travel_data(df)
+
+    exploded = home_travel_data.explode("travelcountry")
     grouped = exploded.groupby(["homecountry", "travelcountry"], as_index=False).agg(
         "count"
     )
@@ -100,6 +104,18 @@ def travel_sunburst(df, home_countries=None, travel_countries=None, save_to=None
 
     if travel_countries:
         grouped = grouped[grouped["travelcountry"].isin(travel_countries)]
+
+    # Compute number of devices
+    maids_count = home_travel_data
+    maids_count["homecountry"] = maids_count["homecountry"].apply(alpha3to2)
+    maids_count["travelcountry"] = maids_count["travelcountry"].apply(lambda t: frozenset(alpha3to2(c) for c in t))
+    maids_count[maids_count["homecountry"].isin(home_countries)]
+    maids_count = maids_count[
+        maids_count["travelcountry"].apply(
+            lambda t: len(t.intersection(frozenset(travel_countries))) > 0
+        )
+    ]
+    print('devices:', maids_count['mobile_id'].nunique())
 
     # build labels
     sun_data = px.sunburst(
