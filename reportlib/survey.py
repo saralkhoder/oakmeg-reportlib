@@ -53,6 +53,7 @@ def plot_bar_analysis(
     )
 
     fig.update_layout(
+        font_size=18,
         barmode="stack",
         yaxis={"visible": False, "showgrid": False, "zeroline": False},
         width=size[0],
