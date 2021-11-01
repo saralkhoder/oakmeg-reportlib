@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "reportlib"
-version = "0.1.2"
+version = "0.2.2"
 description = ""
 authors = ["gaspardfeuvray <gaspard.feuvray@gmail.com>"]
 include = ["html/reportlib/*.html"]
