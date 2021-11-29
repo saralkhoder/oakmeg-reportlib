@@ -3,14 +3,14 @@
 ## Installation
 Install the oakmeg **reportlib** package 
 ```bash
-pip install git+https://github.com/gaspardfeuvray/oakmeg-reportlib.git
+pip install git+https://github.com/saralkhoder/oakmeg-reportlib.git
 ```
 
 or in jupyter notebook
 
 ```python
 import sys
-!{sys.executable} -m pip install git+https://github.com/gaspardfeuvray/oakmeg-reportlib.git
+!{sys.executable} -m pip install git+https://github.com/saralkhoder/oakmeg-reportlib.git
 ```
 
 eventually use --ignore-installed after pip install
