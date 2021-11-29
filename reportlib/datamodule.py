@@ -1,4 +1,4 @@
-"""Module for downloading Atom data"""
+"""Download Atom data"""
 import io
 import os
 import re
@@ -288,7 +288,7 @@ class Data:
                 "device id": "mobile_id",
                 "date": "date_served",
                 "hour": "hourserved",
-                "loc": "aoi"
+                "loc": "aoi",
             }
         )
 
@@ -306,7 +306,7 @@ class Data:
 
         self.mop = mop
 
-        self.reach_ratio = mop['mobile_id'].nunique() / mop['impressions'].sum()
+        self.reach_ratio = mop["mobile_id"].nunique() / mop["impressions"].sum()
 
         print(f"- {mop['impressions'].sum()} impressions found in blis_raw folder")
         print("- reach ratio: {:.5f}".format(self.reach_ratio))
@@ -368,7 +368,7 @@ class Data:
             print(f"- {mop['impressions'].sum()} impressions found in public.mop_table")
             self.mop = mop.drop(columns=["message.1"])
 
-            self.reach_ratio = mop['mobile_id'].nunique() / mop['impressions'].sum()
+            self.reach_ratio = mop["mobile_id"].nunique() / mop["impressions"].sum()
 
         else:
             print(f"x no dash data")
@@ -478,28 +478,28 @@ class Data:
             "format",
             "message",
             "hourserved",
-            'keyword',
-            'ad_language',
-            'adtype',
-            'message',
-            'video_first_quartile',
-            'video_midpoint',
-            'video_third_quartile',
-            'video_completions'
+            "keyword",
+            "ad_language",
+            "adtype",
+            "message",
+            "video_first_quartile",
+            "video_midpoint",
+            "video_third_quartile",
+            "video_completions",
         ]
         filename = f"Export_MOP_{self.project_id}_{self.campaign_id}"
         mop_data = external_mop if not external_mop.empty else self.mop
         assert not mop_data.empty, "no mop data provided!"
 
         # TODO: revert
-        mop_data['keyword'] = None
-        mop_data['ad_language'] = None
-        mop_data['adtype'] = None
-        mop_data['message'] = None
-        mop_data['video_first_quartile'] = None
-        mop_data['video_midpoint'] = None
-        mop_data['video_third_quartile'] = None
-        mop_data['video_completions'] = None
+        mop_data["keyword"] = None
+        mop_data["ad_language"] = None
+        mop_data["adtype"] = None
+        mop_data["message"] = None
+        mop_data["video_first_quartile"] = None
+        mop_data["video_midpoint"] = None
+        mop_data["video_third_quartile"] = None
+        mop_data["video_completions"] = None
 
         mop_data[cols].to_csv(
             f"raw/{filename}.zip",
@@ -543,11 +543,17 @@ class Data:
         )
 
 
-def get_maids_data(df: pd.DataFrame) -> tuple:
+def get_maids_data(secret_yaml_path: str, df: pd.DataFrame) -> tuple:
     """
     Load both past impressions and lifesight for given maids
 
+     Example:
+        ``python
+        past_impressions, data.lifesight = get_maids_data('../secrets.yaml', data.mop)
+        ``
+
     Args:
+        secret_yaml_path: for the database connection
         df (DataFrame): dataframe with mobile_id column
 
     Returns:
@@ -556,7 +562,7 @@ def get_maids_data(df: pd.DataFrame) -> tuple:
     """
     assert "mobile_id" in df, "'mobile_id' column not found if DataFrame"
 
-    db = DbConnection("../secrets.yaml")
+    db = DbConnection(secret_yaml_path)
 
     maids = df[["mobile_id"]].dropna().drop_duplicates()
     maids["mobile_id"] = maids["mobile_id"].str.lower()

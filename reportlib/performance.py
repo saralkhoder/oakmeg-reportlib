@@ -1,4 +1,4 @@
-"""Module for reporting on campaign performance"""
+"""Report on campaign performance"""
 from enum import Enum
 import numpy as np
 import pandas as pd
@@ -29,7 +29,7 @@ def overview(df: pd.DataFrame, reach_ratio: float = None, by: str = None):
     """
 
     if not reach_ratio:
-        print('add reach ratio argument to display reach')
+        print("add reach ratio argument to display reach")
 
     if not by:
         result = df[["impressions", "clicks"]].sum()
@@ -37,11 +37,11 @@ def overview(df: pd.DataFrame, reach_ratio: float = None, by: str = None):
         result["clicks"] = result["clicks"]
         result["ctr"] = result["clicks"] / result["impressions"]
         if reach_ratio:
-            result["reach"] = (reach_ratio * result["impressions"])
+            result["reach"] = reach_ratio * result["impressions"]
 
-        typesdict = {'impressions': 'int', 'clicks': 'int'}
+        typesdict = {"impressions": "int", "clicks": "int"}
         if reach_ratio:
-            typesdict['reach'] = 'int'
+            typesdict["reach"] = "int"
         return pd.DataFrame(result).transpose().astype(typesdict)
 
     else:
@@ -75,7 +75,7 @@ def plot_by(
     save_to: str = None,
 ):
     """
-    Plot a performance bar + line chart showing **impressions** and **ctr**
+    Plot a performance bar + line chart showing **impressions**, **ctr** and **reach** (if reach ratio provided)
 
     Can be plotted by day or by category like message
 

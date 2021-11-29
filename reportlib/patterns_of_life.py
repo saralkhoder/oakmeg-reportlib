@@ -1,3 +1,4 @@
+"""Show insights on MAIDs reached"""
 import pandas as pd
 import pycountry
 import plotly.express as px
@@ -108,14 +109,16 @@ def travel_sunburst(df, home_countries=None, travel_countries=None, save_to=None
     # Compute number of devices
     maids_count = home_travel_data
     maids_count["homecountry"] = maids_count["homecountry"].apply(alpha3to2)
-    maids_count["travelcountry"] = maids_count["travelcountry"].apply(lambda t: frozenset(alpha3to2(c) for c in t))
+    maids_count["travelcountry"] = maids_count["travelcountry"].apply(
+        lambda t: frozenset(alpha3to2(c) for c in t)
+    )
     maids_count[maids_count["homecountry"].isin(home_countries)]
     maids_count = maids_count[
         maids_count["travelcountry"].apply(
             lambda t: len(t.intersection(frozenset(travel_countries))) > 0
         )
     ]
-    print('devices:', maids_count['mobile_id'].nunique())
+    print("devices:", maids_count["mobile_id"].nunique())
 
     # build labels
     sun_data = px.sunburst(

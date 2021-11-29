@@ -1,9 +1,10 @@
-"""Module for creating Atom maps"""
+"""Create modular Atom maps"""
 import io
 import json
 from pathlib import Path
 from enum import Enum
 
+import math
 import pandas as pd
 import numpy as np
 import pygeohash
@@ -20,6 +21,7 @@ class Tile(Enum):
     """
     Available base tiles for `reportlib.maps.AtomMap`
     """
+
     TERRAIN = "Stamen Terrain"
     STREETS = "https://api.mapbox.com/styles/v1/gaspardfeuvray/ckpofztgc08ys17mlpwabqxhz/tiles/256/{z}/{x}/{y}@2x?\
 access_token=pk.eyJ1IjoiZ2FzcGFyZGZldXZyYXkiLCJhIjoiY2p2YzdhMHZzMWZyMzN5bWo3dTUwY2UxcSJ9.MwgCkS-8xqvM9wjQI-vjgw"
@@ -29,11 +31,12 @@ access_token=pk.eyJ1IjoiZ2FzcGFyZGZldXZyYXkiLCJhIjoiY2p2YzdhMHZzMWZyMzN5bWo3dTUw
 
 class _Palette(Enum):
     AOI = Color.BLUE.value
+    CIRCLE = Color.BROWN.value
 
 
 class AtomMap:
     """
-    A map object with multiple layers for displaying aois, points, geojson, chloropleth, ...
+    A map object with multiple layers for displaying aois, points, geojson, ...
     Choose the base style from `reportlib.maps.Tile`
 
     Returns:
@@ -91,10 +94,41 @@ class AtomMap:
                 popup=popup,
                 fill_color=_Palette.AOI.value,
                 color=_Palette.AOI.value,
-                opacity=0.5
+                opacity=0.5,
             ).add_to(self.fmap)
 
         self._update_bounds(aois["latitude"], aois["longitude"])
+        return self  # for serialisation
+
+    def add_circles(self, df: pd.DataFrame) -> None:
+        """
+        Add a layer with circles
+
+        Args:
+            df (DataFrame): Must have latitude, longitude and radius (in km) columns, optionally a name
+
+        Returns:
+            self, for chaining
+        """
+
+        for index, item in df.iterrows():
+            folium.Circle(
+                [item["latitude"], item["longitude"]],
+                radius=item["radius"] * 1000,
+                popup=folium.Popup(
+                    html=f"<b>{item['name']}</b></br>",
+                    show=False,
+                    sticky=True,
+                    max_width=500,
+                )
+                if "name" in df.columns
+                else None,
+                fill_color=_Palette.CIRCLE.value,
+                color=_Palette.CIRCLE.value,
+                opacity=0.5,
+            ).add_to(self.fmap)
+
+        self._update_bounds(df["latitude"], df["longitude"])
         return self  # for serialisation
 
     # TODO: make this work consistently, edit parameters
@@ -153,7 +187,7 @@ class AtomMap:
         def marker(geohash, size, intensity):
             return folium.CircleMarker(
                 pygeohash.decode(geohash),
-                radius=size,
+                radius=math.sqrt(size),
                 # color=matplotlib.colors.rgb2hex(colormap(intensity)),
                 # fill_color=matplotlib.colors.rgb2hex(colormap(intensity)),
                 color=colormap(intensity),
@@ -230,7 +264,7 @@ class AtomMap:
                 opacity=1,
                 popup=folium.Popup(
                     html=f"MAID: {row['mobile_id']}, LAT/LON: {row[lat]}, {row[lon]}, {row['date_served']}",
-                    max_width=620
+                    max_width=620,
                 ),  # TODO: remove {row['device id']}
             ).add_to(self.fmap),
             axis=1,
@@ -247,10 +281,19 @@ class AtomMap:
         lon="longitude",
         radius=15,
         plot_max=200000,
-        save_to="",
     ):
         """
-        TODO: docstring
+        Add a heatmap layer from a set of points
+
+        Args:
+            df (DataFrame): The input data
+            lat (str): *optional*, name of the column containing latitudes
+            lon (str): *optional*, name of the column containing longitudes
+            radius (int): *optional*, radius for the area of influence of each point
+            plot_max (int): *optional*, cap on the number of points to print, sampled randomly if exceeded
+
+        Returns:
+            self, for chaining
         """
         if len(df) > plot_max:
             df = df.sample(plot_max)
@@ -264,14 +307,7 @@ class AtomMap:
 
         heat_data = [[row[lat], row[lon]] for index, row in heat_data.iterrows()]
 
-        # self.fmap.add_child(folium.LayerControl())
-
         self.fmap.add_child(plugins.HeatMap(heat_data, radius=radius, control=False))
-        # self.fmap.add_child(
-        #    folium.plugins.MeasureControl(
-        #        position="topright", primary_length_unit="meters"
-        #    )
-        # )
 
         if not df.empty:
             self._update_bounds(df[lat], df[lon])
@@ -368,7 +404,7 @@ def _save_map(fmap: folium.Map, to: str, html=False) -> None:
     Path("generated").mkdir(parents=True, exist_ok=True)
 
     if html:
-        fmap.save("generated/" + to + '.html')
+        fmap.save("generated/" + to + ".html")
     else:
         img_data = fmap._to_png(5)
         img = Image.open(io.BytesIO(img_data))
