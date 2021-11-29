@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
 <title>reportlib.maps API documentation</title>
-<meta name="description" content="Module for creating Atom maps" />
+<meta name="description" content="Create modular Atom maps" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
 <link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
@@ -22,17 +22,18 @@
 <h1 class="title">Module <code>reportlib.maps</code></h1>
 </header>
 <section id="section-intro">
-<p>Module for creating Atom maps</p>
+<p>Create modular Atom maps</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">&#34;&#34;&#34;Module for creating Atom maps&#34;&#34;&#34;
+<pre><code class="python">&#34;&#34;&#34;Create modular Atom maps&#34;&#34;&#34;
 import io
 import json
 from pathlib import Path
 from enum import Enum
 
+import math
 import pandas as pd
 import numpy as np
 import pygeohash
@@ -49,6 +50,7 @@ class Tile(Enum):
     &#34;&#34;&#34;
     Available base tiles for `reportlib.maps.AtomMap`
     &#34;&#34;&#34;
+
     TERRAIN = &#34;Stamen Terrain&#34;
     STREETS = &#34;https://api.mapbox.com/styles/v1/gaspardfeuvray/ckpofztgc08ys17mlpwabqxhz/tiles/256/{z}/{x}/{y}@2x?\
 access_token=pk.eyJ1IjoiZ2FzcGFyZGZldXZyYXkiLCJhIjoiY2p2YzdhMHZzMWZyMzN5bWo3dTUwY2UxcSJ9.MwgCkS-8xqvM9wjQI-vjgw&#34;
@@ -58,11 +60,12 @@ access_token=pk.eyJ1IjoiZ2FzcGFyZGZldXZyYXkiLCJhIjoiY2p2YzdhMHZzMWZyMzN5bWo3dTUw
 
 class _Palette(Enum):
     AOI = Color.BLUE.value
+    CIRCLE = Color.BROWN.value
 
 
 class AtomMap:
     &#34;&#34;&#34;
-    A map object with multiple layers for displaying aois, points, geojson, chloropleth, ...
+    A map object with multiple layers for displaying aois, points, geojson, ...
     Choose the base style from `reportlib.maps.Tile`
 
     Returns:
@@ -120,10 +123,41 @@ class AtomMap:
                 popup=popup,
                 fill_color=_Palette.AOI.value,
                 color=_Palette.AOI.value,
-                opacity=0.5
+                opacity=0.5,
             ).add_to(self.fmap)
 
         self._update_bounds(aois[&#34;latitude&#34;], aois[&#34;longitude&#34;])
+        return self  # for serialisation
+
+    def add_circles(self, df: pd.DataFrame) -&gt; None:
+        &#34;&#34;&#34;
+        Add a layer with circles
+
+        Args:
+            df (DataFrame): Must have latitude, longitude and radius (in km) columns, optionally a name
+
+        Returns:
+            self, for chaining
+        &#34;&#34;&#34;
+
+        for index, item in df.iterrows():
+            folium.Circle(
+                [item[&#34;latitude&#34;], item[&#34;longitude&#34;]],
+                radius=item[&#34;radius&#34;] * 1000,
+                popup=folium.Popup(
+                    html=f&#34;&lt;b&gt;{item[&#39;name&#39;]}&lt;/b&gt;&lt;/br&gt;&#34;,
+                    show=False,
+                    sticky=True,
+                    max_width=500,
+                )
+                if &#34;name&#34; in df.columns
+                else None,
+                fill_color=_Palette.CIRCLE.value,
+                color=_Palette.CIRCLE.value,
+                opacity=0.5,
+            ).add_to(self.fmap)
+
+        self._update_bounds(df[&#34;latitude&#34;], df[&#34;longitude&#34;])
         return self  # for serialisation
 
     # TODO: make this work consistently, edit parameters
@@ -182,7 +216,7 @@ class AtomMap:
         def marker(geohash, size, intensity):
             return folium.CircleMarker(
                 pygeohash.decode(geohash),
-                radius=size,
+                radius=math.sqrt(size),
                 # color=matplotlib.colors.rgb2hex(colormap(intensity)),
                 # fill_color=matplotlib.colors.rgb2hex(colormap(intensity)),
                 color=colormap(intensity),
@@ -259,7 +293,7 @@ class AtomMap:
                 opacity=1,
                 popup=folium.Popup(
                     html=f&#34;MAID: {row[&#39;mobile_id&#39;]}, LAT/LON: {row[lat]}, {row[lon]}, {row[&#39;date_served&#39;]}&#34;,
-                    max_width=620
+                    max_width=620,
                 ),  # TODO: remove {row[&#39;device id&#39;]}
             ).add_to(self.fmap),
             axis=1,
@@ -397,7 +431,7 @@ def _save_map(fmap: folium.Map, to: str, html=False) -&gt; None:
     Path(&#34;generated&#34;).mkdir(parents=True, exist_ok=True)
 
     if html:
-        fmap.save(&#34;generated/&#34; + to + &#39;.html&#39;)
+        fmap.save(&#34;generated/&#34; + to + &#34;.html&#34;)
     else:
         img_data = fmap._to_png(5)
         img = Image.open(io.BytesIO(img_data))
@@ -418,7 +452,7 @@ def _save_map(fmap: folium.Map, to: str, html=False) -&gt; None:
 <span>(</span><span>tile: <a title="reportlib.maps.Tile" href="#reportlib.maps.Tile">Tile</a>)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>A map object with multiple layers for displaying aois, points, geojson, chloropleth, &hellip;
+<div class="desc"><p>A map object with multiple layers for displaying aois, points, geojson, &hellip;
 Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib.maps.Tile">Tile</a></code></p>
 <h2 id="returns">Returns</h2>
 <p>A pandas DataFrame with the query result</p></div>
@@ -428,7 +462,7 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
 </summary>
 <pre><code class="python">class AtomMap:
     &#34;&#34;&#34;
-    A map object with multiple layers for displaying aois, points, geojson, chloropleth, ...
+    A map object with multiple layers for displaying aois, points, geojson, ...
     Choose the base style from `reportlib.maps.Tile`
 
     Returns:
@@ -486,10 +520,41 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
                 popup=popup,
                 fill_color=_Palette.AOI.value,
                 color=_Palette.AOI.value,
-                opacity=0.5
+                opacity=0.5,
             ).add_to(self.fmap)
 
         self._update_bounds(aois[&#34;latitude&#34;], aois[&#34;longitude&#34;])
+        return self  # for serialisation
+
+    def add_circles(self, df: pd.DataFrame) -&gt; None:
+        &#34;&#34;&#34;
+        Add a layer with circles
+
+        Args:
+            df (DataFrame): Must have latitude, longitude and radius (in km) columns, optionally a name
+
+        Returns:
+            self, for chaining
+        &#34;&#34;&#34;
+
+        for index, item in df.iterrows():
+            folium.Circle(
+                [item[&#34;latitude&#34;], item[&#34;longitude&#34;]],
+                radius=item[&#34;radius&#34;] * 1000,
+                popup=folium.Popup(
+                    html=f&#34;&lt;b&gt;{item[&#39;name&#39;]}&lt;/b&gt;&lt;/br&gt;&#34;,
+                    show=False,
+                    sticky=True,
+                    max_width=500,
+                )
+                if &#34;name&#34; in df.columns
+                else None,
+                fill_color=_Palette.CIRCLE.value,
+                color=_Palette.CIRCLE.value,
+                opacity=0.5,
+            ).add_to(self.fmap)
+
+        self._update_bounds(df[&#34;latitude&#34;], df[&#34;longitude&#34;])
         return self  # for serialisation
 
     # TODO: make this work consistently, edit parameters
@@ -548,7 +613,7 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
         def marker(geohash, size, intensity):
             return folium.CircleMarker(
                 pygeohash.decode(geohash),
-                radius=size,
+                radius=math.sqrt(size),
                 # color=matplotlib.colors.rgb2hex(colormap(intensity)),
                 # fill_color=matplotlib.colors.rgb2hex(colormap(intensity)),
                 color=colormap(intensity),
@@ -625,7 +690,7 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
                 opacity=1,
                 popup=folium.Popup(
                     html=f&#34;MAID: {row[&#39;mobile_id&#39;]}, LAT/LON: {row[lat]}, {row[lon]}, {row[&#39;date_served&#39;]}&#34;,
-                    max_width=620
+                    max_width=620,
                 ),  # TODO: remove {row[&#39;device id&#39;]}
             ).add_to(self.fmap),
             axis=1,
@@ -782,7 +847,7 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
             popup=popup,
             fill_color=_Palette.AOI.value,
             color=_Palette.AOI.value,
-            opacity=0.5
+            opacity=0.5,
         ).add_to(self.fmap)
 
     self._update_bounds(aois[&#34;latitude&#34;], aois[&#34;longitude&#34;])
@@ -865,7 +930,7 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
     def marker(geohash, size, intensity):
         return folium.CircleMarker(
             pygeohash.decode(geohash),
-            radius=size,
+            radius=math.sqrt(size),
             # color=matplotlib.colors.rgb2hex(colormap(intensity)),
             # fill_color=matplotlib.colors.rgb2hex(colormap(intensity)),
             color=colormap(intensity),
@@ -891,6 +956,54 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
     )
     self._update_bounds(aoi_centroids[:, 0], aoi_centroids[:, 1])
     return self</code></pre>
+</details>
+</dd>
+<dt id="reportlib.maps.AtomMap.add_circles"><code class="name flex">
+<span>def <span class="ident">add_circles</span></span>(<span>self, df: pandas.core.frame.DataFrame) ‑> None</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Add a layer with circles</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>df</code></strong> :&ensp;<code>DataFrame</code></dt>
+<dd>Must have latitude, longitude and radius (in km) columns, optionally a name</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<p>self, for chaining</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def add_circles(self, df: pd.DataFrame) -&gt; None:
+    &#34;&#34;&#34;
+    Add a layer with circles
+
+    Args:
+        df (DataFrame): Must have latitude, longitude and radius (in km) columns, optionally a name
+
+    Returns:
+        self, for chaining
+    &#34;&#34;&#34;
+
+    for index, item in df.iterrows():
+        folium.Circle(
+            [item[&#34;latitude&#34;], item[&#34;longitude&#34;]],
+            radius=item[&#34;radius&#34;] * 1000,
+            popup=folium.Popup(
+                html=f&#34;&lt;b&gt;{item[&#39;name&#39;]}&lt;/b&gt;&lt;/br&gt;&#34;,
+                show=False,
+                sticky=True,
+                max_width=500,
+            )
+            if &#34;name&#34; in df.columns
+            else None,
+            fill_color=_Palette.CIRCLE.value,
+            color=_Palette.CIRCLE.value,
+            opacity=0.5,
+        ).add_to(self.fmap)
+
+    self._update_bounds(df[&#34;latitude&#34;], df[&#34;longitude&#34;])
+    return self  # for serialisation</code></pre>
 </details>
 </dd>
 <dt id="reportlib.maps.AtomMap.add_geojson"><code class="name flex">
@@ -1080,7 +1193,7 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
             opacity=1,
             popup=folium.Popup(
                 html=f&#34;MAID: {row[&#39;mobile_id&#39;]}, LAT/LON: {row[lat]}, {row[lon]}, {row[&#39;date_served&#39;]}&#34;,
-                max_width=620
+                max_width=620,
             ),  # TODO: remove {row[&#39;device id&#39;]}
         ).add_to(self.fmap),
         axis=1,
@@ -1162,6 +1275,7 @@ Choose the base style from <code><a title="reportlib.maps.Tile" href="#reportlib
     &#34;&#34;&#34;
     Available base tiles for `reportlib.maps.AtomMap`
     &#34;&#34;&#34;
+
     TERRAIN = &#34;Stamen Terrain&#34;
     STREETS = &#34;https://api.mapbox.com/styles/v1/gaspardfeuvray/ckpofztgc08ys17mlpwabqxhz/tiles/256/{z}/{x}/{y}@2x?\
 access_token=pk.eyJ1IjoiZ2FzcGFyZGZldXZyYXkiLCJhIjoiY2p2YzdhMHZzMWZyMzN5bWo3dTUwY2UxcSJ9.MwgCkS-8xqvM9wjQI-vjgw&#34;
@@ -1209,6 +1323,7 @@ access_token=pk.eyJ1IjoiZ2FzcGFyZGZldXZyYXkiLCJhIjoiY2p2YzdhMHZzMWZyMzN5bWo3dTUw
 <ul class="two-column">
 <li><code><a title="reportlib.maps.AtomMap.add_aois" href="#reportlib.maps.AtomMap.add_aois">add_aois</a></code></li>
 <li><code><a title="reportlib.maps.AtomMap.add_aois_perf" href="#reportlib.maps.AtomMap.add_aois_perf">add_aois_perf</a></code></li>
+<li><code><a title="reportlib.maps.AtomMap.add_circles" href="#reportlib.maps.AtomMap.add_circles">add_circles</a></code></li>
 <li><code><a title="reportlib.maps.AtomMap.add_geojson" href="#reportlib.maps.AtomMap.add_geojson">add_geojson</a></code></li>
 <li><code><a title="reportlib.maps.AtomMap.add_heatmap" href="#reportlib.maps.AtomMap.add_heatmap">add_heatmap</a></code></li>
 <li><code><a title="reportlib.maps.AtomMap.add_points" href="#reportlib.maps.AtomMap.add_points">add_points</a></code></li>

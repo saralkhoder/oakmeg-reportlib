@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
 <title>reportlib.datamodule API documentation</title>
-<meta name="description" content="Module for downloading Atom data" />
+<meta name="description" content="Download Atom data" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
 <link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
@@ -22,12 +22,12 @@
 <h1 class="title">Module <code>reportlib.datamodule</code></h1>
 </header>
 <section id="section-intro">
-<p>Module for downloading Atom data</p>
+<p>Download Atom data</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">&#34;&#34;&#34;Module for downloading Atom data&#34;&#34;&#34;
+<pre><code class="python">&#34;&#34;&#34;Download Atom data&#34;&#34;&#34;
 import io
 import os
 import re
@@ -572,11 +572,17 @@ class Data:
         )
 
 
-def get_maids_data(df: pd.DataFrame) -&gt; tuple:
+def get_maids_data(secret_yaml_path: str, df: pd.DataFrame) -&gt; tuple:
     &#34;&#34;&#34;
     Load both past impressions and lifesight for given maids
 
+     Example:
+        ``python
+        past_impressions, data.lifesight = get_maids_data(&#39;../secrets.yaml&#39;, data.mop)
+        ``
+
     Args:
+        secret_yaml_path: for the database connection
         df (DataFrame): dataframe with mobile_id column
 
     Returns:
@@ -585,7 +591,7 @@ def get_maids_data(df: pd.DataFrame) -&gt; tuple:
     &#34;&#34;&#34;
     assert &#34;mobile_id&#34; in df, &#34;&#39;mobile_id&#39; column not found if DataFrame&#34;
 
-    db = DbConnection(&#34;../secrets.yaml&#34;)
+    db = DbConnection(secret_yaml_path)
 
     maids = df[[&#34;mobile_id&#34;]].dropna().drop_duplicates()
     maids[&#34;mobile_id&#34;] = maids[&#34;mobile_id&#34;].str.lower()
@@ -597,7 +603,7 @@ def get_maids_data(df: pd.DataFrame) -&gt; tuple:
 
     print(&#34;\ndownloading past impressions&#34;)
     past_impressions = db.query(
-        &#34;&#34;&#34;
+    &#34;&#34;&#34;
     select *
     from geoloc_impr gi
     inner join (select mobile_id from maids_manual) as m 
@@ -648,12 +654,17 @@ def _where_clause(dict_filters):
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
 <dt id="reportlib.datamodule.get_maids_data"><code class="name flex">
-<span>def <span class="ident">get_maids_data</span></span>(<span>df: pandas.core.frame.DataFrame) ‑> tuple</span>
+<span>def <span class="ident">get_maids_data</span></span>(<span>secret_yaml_path: str, df: pandas.core.frame.DataFrame) ‑> tuple</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Load both past impressions and lifesight for given maids</p>
+<p>Example:
+<code>python
+past_impressions, data.lifesight = get_maids_data('../secrets.yaml', data.mop)</code></p>
 <h2 id="args">Args</h2>
 <dl>
+<dt><strong><code>secret_yaml_path</code></strong></dt>
+<dd>for the database connection</dd>
 <dt><strong><code>df</code></strong> :&ensp;<code>DataFrame</code></dt>
 <dd>dataframe with mobile_id column</dd>
 </dl>
@@ -664,11 +675,17 @@ lifesight(DataFrame): all lifesight data for those maids (from public.lifesight_
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def get_maids_data(df: pd.DataFrame) -&gt; tuple:
+<pre><code class="python">def get_maids_data(secret_yaml_path: str, df: pd.DataFrame) -&gt; tuple:
     &#34;&#34;&#34;
     Load both past impressions and lifesight for given maids
 
+     Example:
+        ``python
+        past_impressions, data.lifesight = get_maids_data(&#39;../secrets.yaml&#39;, data.mop)
+        ``
+
     Args:
+        secret_yaml_path: for the database connection
         df (DataFrame): dataframe with mobile_id column
 
     Returns:
@@ -677,7 +694,7 @@ lifesight(DataFrame): all lifesight data for those maids (from public.lifesight_
     &#34;&#34;&#34;
     assert &#34;mobile_id&#34; in df, &#34;&#39;mobile_id&#39; column not found if DataFrame&#34;
 
-    db = DbConnection(&#34;../secrets.yaml&#34;)
+    db = DbConnection(secret_yaml_path)
 
     maids = df[[&#34;mobile_id&#34;]].dropna().drop_duplicates()
     maids[&#34;mobile_id&#34;] = maids[&#34;mobile_id&#34;].str.lower()
@@ -689,7 +706,7 @@ lifesight(DataFrame): all lifesight data for those maids (from public.lifesight_
 
     print(&#34;\ndownloading past impressions&#34;)
     past_impressions = db.query(
-        &#34;&#34;&#34;
+    &#34;&#34;&#34;
     select *
     from geoloc_impr gi
     inner join (select mobile_id from maids_manual) as m 

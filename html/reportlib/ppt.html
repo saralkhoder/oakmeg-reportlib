@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
 <title>reportlib.ppt API documentation</title>
-<meta name="description" content="Module for generating PowerPoint elements like tables" />
+<meta name="description" content="Generate PowerPoint elements like tables" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
 <link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
@@ -22,12 +22,12 @@
 <h1 class="title">Module <code>reportlib.ppt</code></h1>
 </header>
 <section id="section-intro">
-<p>Module for generating PowerPoint elements like tables</p>
+<p>Generate PowerPoint elements like tables</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">&#34;&#34;&#34;Module for generating PowerPoint elements like tables&#34;&#34;&#34;
+<pre><code class="python">&#34;&#34;&#34;Generate PowerPoint elements like tables&#34;&#34;&#34;
 from pathlib import Path
 
 import pandas as pd
@@ -38,6 +38,14 @@ from pptx.util import Inches
 def save_as_table(df: pd.DataFrame, to: str):
     &#34;&#34;&#34;
     Write the passed DataFrame as a table in a new powerpoint file
+
+    You should format-rename-reorder columns.
+
+    Use functions such as
+    ``
+    df[&#39;ctr&#39;].apply(lambda v: f&#39;{v:.2f}&#39;)
+    ``
+    to format percentages
 
     Args:
         df (DataFrame): input data, can be exploded or already aggregated
@@ -81,6 +89,10 @@ def save_as_table(df: pd.DataFrame, to: str):
 </code></dt>
 <dd>
 <div class="desc"><p>Write the passed DataFrame as a table in a new powerpoint file</p>
+<p>You should format-rename-reorder columns.</p>
+<p>Use functions such as
+<code>df['ctr'].apply(lambda v: f'{v:.2f}')</code>
+to format percentages</p>
 <h2 id="args">Args</h2>
 <dl>
 <dt><strong><code>df</code></strong> :&ensp;<code>DataFrame</code></dt>
@@ -95,6 +107,14 @@ def save_as_table(df: pd.DataFrame, to: str):
 <pre><code class="python">def save_as_table(df: pd.DataFrame, to: str):
     &#34;&#34;&#34;
     Write the passed DataFrame as a table in a new powerpoint file
+
+    You should format-rename-reorder columns.
+
+    Use functions such as
+    ``
+    df[&#39;ctr&#39;].apply(lambda v: f&#39;{v:.2f}&#39;)
+    ``
+    to format percentages
 
     Args:
         df (DataFrame): input data, can be exploded or already aggregated

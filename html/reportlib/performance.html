@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
 <title>reportlib.performance API documentation</title>
-<meta name="description" content="Module for reporting on campaign performance" />
+<meta name="description" content="Report on campaign performance" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
 <link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
@@ -22,12 +22,12 @@
 <h1 class="title">Module <code>reportlib.performance</code></h1>
 </header>
 <section id="section-intro">
-<p>Module for reporting on campaign performance</p>
+<p>Report on campaign performance</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">&#34;&#34;&#34;Module for reporting on campaign performance&#34;&#34;&#34;
+<pre><code class="python">&#34;&#34;&#34;Report on campaign performance&#34;&#34;&#34;
 from enum import Enum
 import numpy as np
 import pandas as pd
@@ -104,7 +104,7 @@ def plot_by(
     save_to: str = None,
 ):
     &#34;&#34;&#34;
-    Plot a performance bar + line chart showing **impressions** and **ctr**
+    Plot a performance bar + line chart showing **impressions**, **ctr** and **reach** (if reach ratio provided)
 
     Can be plotted by day or by category like message
 
@@ -295,7 +295,7 @@ def plot_by(
 <span>def <span class="ident">plot_by</span></span>(<span>column: str, dash: pandas.core.frame.DataFrame, reach_ratio: float = None, min_impressions: int = 20, size: list = [750, 350], sort_by: str = None, legend_position: str = 'left', save_to: str = None)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Plot a performance bar + line chart showing <strong>impressions</strong> and <strong>ctr</strong></p>
+<div class="desc"><p>Plot a performance bar + line chart showing <strong>impressions</strong>, <strong>ctr</strong> and <strong>reach</strong> (if reach ratio provided)</p>
 <p>Can be plotted by day or by category like message</p>
 <h2 id="usage">Usage</h2>
 <p><code>performance.plot_by(data.dash, 'date_served', legend_position='right', save_to='perf_daily')</code></p>
@@ -334,7 +334,7 @@ def plot_by(
     save_to: str = None,
 ):
     &#34;&#34;&#34;
-    Plot a performance bar + line chart showing **impressions** and **ctr**
+    Plot a performance bar + line chart showing **impressions**, **ctr** and **reach** (if reach ratio provided)
 
     Can be plotted by day or by category like message
 

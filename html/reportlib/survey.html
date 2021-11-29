@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
 <title>reportlib.survey API documentation</title>
-<meta name="description" content="" />
+<meta name="description" content="Charting survey answers" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
 <link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
@@ -22,14 +22,117 @@
 <h1 class="title">Module <code>reportlib.survey</code></h1>
 </header>
 <section id="section-intro">
+<p>Charting survey answers</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">from plotly import graph_objects as go
-
-from reportlib.utils import PALETTE
+<pre><code class="python">&#34;&#34;&#34;Charting survey answers&#34;&#34;&#34;
+from plotly import graph_objects as go
+import pandas as pd
+from reportlib.utils import PALETTE, Color
 from reportlib._plotly_utils import save_fig_to, TRANSPARENT_LAYOUT
+
+
+def plot_answers_funnel(
+        survey_df, question_columns, save_to=None
+):
+    &#34;&#34;&#34;
+    Plots a funnel graph for surveys (public.new_survey_data data structure)
+
+    Args:
+        survey_df (DataFrame): from new_survey_data table
+        question_columns (str[]): columns in which responses are stored, eg. &#39;q1&#39;,&#39;q2&#39;...
+        save_to (str): *optional*, save as png, don&#39;t write any extension here
+
+    Returns:
+        figure (plotly.graph_object.Figure)
+    &#34;&#34;&#34;
+    questions = pd.DataFrame(columns=[&#34;name&#34;, &#34;answers&#34;])
+
+    # Filter questions and count answers
+    for idx, question_name in enumerate(question_columns):
+        # only onsider a question if answers exist
+        if survey_df[question_name].notna().sum() &gt; 0:
+            questions = questions.append(
+                [
+                    {
+                        &#34;name&#34;: question_name,
+                        &#34;answers&#34;: survey_df[question_name].notna().sum(),
+                    }
+                ]
+            )
+
+    print(questions[&#34;answers&#34;])
+
+    # Plot figure
+    fig = go.Figure(
+        go.Funnel(
+            y=question_columns,
+            x=questions[&#34;answers&#34;],
+            # textposition=&#34;inside&#34;,
+            textinfo=&#34;none&#34;,
+            # + (&#34;+value&#34; if show_values else &#34;&#34;)
+            # + (&#34;+percent initial&#34; if show_percentage else &#34;&#34;),
+            marker={&#34;color&#34;: Color.BROWN.value}
+        )
+    )
+
+    fig.update_yaxes(showticklabels=False)
+    fig.update_layout(
+        # title={&#39;text&#39;: &#34;Answers volume funnel&#34;,
+        #       &#39;xanchor&#39;: &#34;center&#34;, &#39;yanchor&#39;: &#34;top&#34;,
+        #       &#39;y&#39;:0.9, &#39;x&#39;:0.5},
+        paper_bgcolor=&#34;rgba(0,0,0,0)&#34;,
+        plot_bgcolor=&#34;rgba(0,0,0,0)&#34;,
+        margin=dict(t=0, b=0, l=0, r=0),
+        font_family=&#34;AppleGothic&#34;,
+    )
+
+    if save_to:
+        save_fig_to(fig, save_to)
+
+    return fig
+
+
+def plot_pie_analysis(
+    value_counts, palette=PALETTE, size: list = [1000, 700], save_to=None
+):
+    &#34;&#34;&#34;
+    Plots a simple pie chart from value counts
+
+    Args:
+        value_counts (DataFrame): already aggregated data, eg. with .value_counts()
+        palette (str[]): *optional*, list of colours
+        size (int[]): *optional*, figure size
+        save_to (str): *optional*, save as png, don&#39;t write any extension here
+
+    Returns:
+        figure (plotly.graph_object.Figure)
+    &#34;&#34;&#34;
+    fig = go.Figure(
+        data=[
+            go.Pie(
+                labels=value_counts.index,
+                direction=&#34;clockwise&#34;,
+                values=value_counts.values,
+                sort=False,
+                marker={&#34;colors&#34;: palette},
+                texttemplate=&#34;&lt;b&gt;%{percent:.0%}&lt;/b&gt;&lt;br&gt;(%{value})&#34;,
+            )
+        ]
+    )
+
+    fig.update_layout(
+        font_size=18,
+        width=size[0],
+        height=size[1]
+    )
+
+    if save_to:
+        save_fig_to(fig, save_to)
+
+    return fig
 
 
 def plot_bar_analysis(
@@ -40,6 +143,20 @@ def plot_bar_analysis(
     size: list = [1000, 700],
     save_to=None,
 ):
+    &#34;&#34;&#34;
+    Plots a stacked bar chart to analyse survey answers across two axes.
+
+    Args:
+        df (DataFrame): survey answers
+        question (str): what question answers to analyse
+        by_answers_from (str): second analysis dimension
+        palette (str[]): *optional*, list of colours
+        size (int[]): *optional*, figure size
+        save_to (str): *optional*, save as png, don&#39;t write any extension here
+
+    Returns:
+        figure (plotly.graph_object.Figure)
+    &#34;&#34;&#34;
     # Group to MultiIndex df and normalise copy
     grouped = (
         df[[question, by_answers_from]].groupby([by_answers_from, question]).size()
@@ -101,11 +218,109 @@ def plot_bar_analysis(
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
+<dt id="reportlib.survey.plot_answers_funnel"><code class="name flex">
+<span>def <span class="ident">plot_answers_funnel</span></span>(<span>survey_df, question_columns, save_to=None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Plots a funnel graph for surveys (public.new_survey_data data structure)</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>survey_df</code></strong> :&ensp;<code>DataFrame</code></dt>
+<dd>from new_survey_data table</dd>
+<dt><strong><code>question_columns</code></strong> :&ensp;<code>str[]</code></dt>
+<dd>columns in which responses are stored, eg. 'q1','q2'&hellip;</dd>
+<dt><strong><code>save_to</code></strong> :&ensp;<code>str</code></dt>
+<dd><em>optional</em>, save as png, don't write any extension here</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<p>figure (plotly.graph_object.Figure)</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def plot_answers_funnel(
+        survey_df, question_columns, save_to=None
+):
+    &#34;&#34;&#34;
+    Plots a funnel graph for surveys (public.new_survey_data data structure)
+
+    Args:
+        survey_df (DataFrame): from new_survey_data table
+        question_columns (str[]): columns in which responses are stored, eg. &#39;q1&#39;,&#39;q2&#39;...
+        save_to (str): *optional*, save as png, don&#39;t write any extension here
+
+    Returns:
+        figure (plotly.graph_object.Figure)
+    &#34;&#34;&#34;
+    questions = pd.DataFrame(columns=[&#34;name&#34;, &#34;answers&#34;])
+
+    # Filter questions and count answers
+    for idx, question_name in enumerate(question_columns):
+        # only onsider a question if answers exist
+        if survey_df[question_name].notna().sum() &gt; 0:
+            questions = questions.append(
+                [
+                    {
+                        &#34;name&#34;: question_name,
+                        &#34;answers&#34;: survey_df[question_name].notna().sum(),
+                    }
+                ]
+            )
+
+    print(questions[&#34;answers&#34;])
+
+    # Plot figure
+    fig = go.Figure(
+        go.Funnel(
+            y=question_columns,
+            x=questions[&#34;answers&#34;],
+            # textposition=&#34;inside&#34;,
+            textinfo=&#34;none&#34;,
+            # + (&#34;+value&#34; if show_values else &#34;&#34;)
+            # + (&#34;+percent initial&#34; if show_percentage else &#34;&#34;),
+            marker={&#34;color&#34;: Color.BROWN.value}
+        )
+    )
+
+    fig.update_yaxes(showticklabels=False)
+    fig.update_layout(
+        # title={&#39;text&#39;: &#34;Answers volume funnel&#34;,
+        #       &#39;xanchor&#39;: &#34;center&#34;, &#39;yanchor&#39;: &#34;top&#34;,
+        #       &#39;y&#39;:0.9, &#39;x&#39;:0.5},
+        paper_bgcolor=&#34;rgba(0,0,0,0)&#34;,
+        plot_bgcolor=&#34;rgba(0,0,0,0)&#34;,
+        margin=dict(t=0, b=0, l=0, r=0),
+        font_family=&#34;AppleGothic&#34;,
+    )
+
+    if save_to:
+        save_fig_to(fig, save_to)
+
+    return fig</code></pre>
+</details>
+</dd>
 <dt id="reportlib.survey.plot_bar_analysis"><code class="name flex">
 <span>def <span class="ident">plot_bar_analysis</span></span>(<span>df, question, by_answers_from, palette=['#415AA3', '#67A86B', '#E1D798', '#675645', '#D0D6D9', '#55BDFF', '#5E5E5E'], size: list = [1000, 700], save_to=None)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Plots a stacked bar chart to analyse survey answers across two axes.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>df</code></strong> :&ensp;<code>DataFrame</code></dt>
+<dd>survey answers</dd>
+<dt><strong><code>question</code></strong> :&ensp;<code>str</code></dt>
+<dd>what question answers to analyse</dd>
+<dt><strong><code>by_answers_from</code></strong> :&ensp;<code>str</code></dt>
+<dd>second analysis dimension</dd>
+<dt><strong><code>palette</code></strong> :&ensp;<code>str[]</code></dt>
+<dd><em>optional</em>, list of colours</dd>
+<dt><strong><code>size</code></strong> :&ensp;<code>int[]</code></dt>
+<dd><em>optional</em>, figure size</dd>
+<dt><strong><code>save_to</code></strong> :&ensp;<code>str</code></dt>
+<dd><em>optional</em>, save as png, don't write any extension here</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<p>figure (plotly.graph_object.Figure)</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -118,6 +333,20 @@ def plot_bar_analysis(
     size: list = [1000, 700],
     save_to=None,
 ):
+    &#34;&#34;&#34;
+    Plots a stacked bar chart to analyse survey answers across two axes.
+
+    Args:
+        df (DataFrame): survey answers
+        question (str): what question answers to analyse
+        by_answers_from (str): second analysis dimension
+        palette (str[]): *optional*, list of colours
+        size (int[]): *optional*, figure size
+        save_to (str): *optional*, save as png, don&#39;t write any extension here
+
+    Returns:
+        figure (plotly.graph_object.Figure)
+    &#34;&#34;&#34;
     # Group to MultiIndex df and normalise copy
     grouped = (
         df[[question, by_answers_from]].groupby([by_answers_from, question]).size()
@@ -172,6 +401,68 @@ def plot_bar_analysis(
     return fig</code></pre>
 </details>
 </dd>
+<dt id="reportlib.survey.plot_pie_analysis"><code class="name flex">
+<span>def <span class="ident">plot_pie_analysis</span></span>(<span>value_counts, palette=['#415AA3', '#67A86B', '#E1D798', '#675645', '#D0D6D9', '#55BDFF', '#5E5E5E'], size: list = [1000, 700], save_to=None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Plots a simple pie chart from value counts</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>value_counts</code></strong> :&ensp;<code>DataFrame</code></dt>
+<dd>already aggregated data, eg. with .value_counts()</dd>
+<dt><strong><code>palette</code></strong> :&ensp;<code>str[]</code></dt>
+<dd><em>optional</em>, list of colours</dd>
+<dt><strong><code>size</code></strong> :&ensp;<code>int[]</code></dt>
+<dd><em>optional</em>, figure size</dd>
+<dt><strong><code>save_to</code></strong> :&ensp;<code>str</code></dt>
+<dd><em>optional</em>, save as png, don't write any extension here</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<p>figure (plotly.graph_object.Figure)</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def plot_pie_analysis(
+    value_counts, palette=PALETTE, size: list = [1000, 700], save_to=None
+):
+    &#34;&#34;&#34;
+    Plots a simple pie chart from value counts
+
+    Args:
+        value_counts (DataFrame): already aggregated data, eg. with .value_counts()
+        palette (str[]): *optional*, list of colours
+        size (int[]): *optional*, figure size
+        save_to (str): *optional*, save as png, don&#39;t write any extension here
+
+    Returns:
+        figure (plotly.graph_object.Figure)
+    &#34;&#34;&#34;
+    fig = go.Figure(
+        data=[
+            go.Pie(
+                labels=value_counts.index,
+                direction=&#34;clockwise&#34;,
+                values=value_counts.values,
+                sort=False,
+                marker={&#34;colors&#34;: palette},
+                texttemplate=&#34;&lt;b&gt;%{percent:.0%}&lt;/b&gt;&lt;br&gt;(%{value})&#34;,
+            )
+        ]
+    )
+
+    fig.update_layout(
+        font_size=18,
+        width=size[0],
+        height=size[1]
+    )
+
+    if save_to:
+        save_fig_to(fig, save_to)
+
+    return fig</code></pre>
+</details>
+</dd>
 </dl>
 </section>
 <section>
@@ -190,7 +481,9 @@ def plot_bar_analysis(
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
+<li><code><a title="reportlib.survey.plot_answers_funnel" href="#reportlib.survey.plot_answers_funnel">plot_answers_funnel</a></code></li>
 <li><code><a title="reportlib.survey.plot_bar_analysis" href="#reportlib.survey.plot_bar_analysis">plot_bar_analysis</a></code></li>
+<li><code><a title="reportlib.survey.plot_pie_analysis" href="#reportlib.survey.plot_pie_analysis">plot_pie_analysis</a></code></li>
 </ul>
 </li>
 </ul>
