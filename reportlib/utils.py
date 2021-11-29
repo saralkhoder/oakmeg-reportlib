@@ -62,6 +62,11 @@ PALETTE_SHADES = [
     Color.LIGHTBLUE.value
 ]
 
+def new_func():
+    """
+    This function computes
+    """
+    return 1+1
 
 def open_documentation():
     """
