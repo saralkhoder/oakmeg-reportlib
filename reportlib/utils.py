@@ -1,4 +1,4 @@
-"""General utilities"""
+"""Colours, documentation"""
 import os
 import webbrowser
 from enum import Enum
@@ -20,7 +20,7 @@ class Color(Enum):
 
 class Color(Enum):
     LIGHTGREY = "#D0D6D9"
-    GREY = "#B8BFBF"
+    GREY = "#B3B3B3"
     DARKGREY = "#5E5E5E"
     BLUE = "#415AA3"
     LIGHTBLUE = "#55BDFF"
