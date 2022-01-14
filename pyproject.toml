@@ -8,7 +8,7 @@ include = ["html/reportlib/*.html"]
 [tool.poetry.dependencies]
 python = ">=3.7.1"
 pandas = "^1.3.1"
-Pillow = "^8.3.1"
+Pillow = "^9.0.0"
 folium = "^0.12.1"
 psycopg2-binary = "^2.9.1"
 SQLAlchemy = "^1.4.22"
