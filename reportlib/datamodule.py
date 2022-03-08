@@ -79,8 +79,10 @@ class Data:
             self.project_id = "Nutmeg - PRO-12767"
         elif "OT" in campaign_id:
             self.project_id = "Oak - PRO-12766"
+        elif "MT" in campaign_id:
+            self.project_id = "GOLF - PRO12775"
         else:
-            raise AssertionError("Unrecognized campaign ID, should be NTXX or OTXX")
+            raise AssertionError("Unrecognized campaign ID, should be NTXX, OTXX or MTXX")
         self.campaign_id = campaign_id
         self.aois = pd.DataFrame()
         self.dash = pd.DataFrame()
