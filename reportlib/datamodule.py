@@ -81,6 +81,8 @@ class Data:
             self.project_id = "Oak - PRO-12766"
         elif "MT" in campaign_id:
             self.project_id = "GOLF - PRO12775"
+        elif "W0" in campaign_id:
+            self.project_id = "Oak - PRO-12766"
         else:
             raise AssertionError("Unrecognized campaign ID, should be NTXX, OTXX or MTXX")
         self.campaign_id = campaign_id
