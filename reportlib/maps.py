@@ -173,7 +173,7 @@ class AtomMap:
             return (v - mn) / (mx - mn) * (mx_to - mn_to) + mn_to
 
         colormap = cm.LinearColormap(
-            colors=["#F5A331", "#F5E214", "#35CC3F"],
+            colors=["#0047AB", "#F5E214", "#35CC3F"],
             index=[
                 minctr - ctr_color_offset,
                 (minctr - ctr_color_offset + maxctr) / 2,
