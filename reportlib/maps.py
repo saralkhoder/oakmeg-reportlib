@@ -280,7 +280,7 @@ class AtomMap:
         lat="latitude",
         lon="longitude",
         radius=15,
-        plot_max=200000,
+        plot_max=2000000,
     ):
         """
         Add a heatmap layer from a set of points
