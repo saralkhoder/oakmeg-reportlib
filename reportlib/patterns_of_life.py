@@ -22,6 +22,8 @@ def alpha3to2(alpha3: str) -> str:
         alpha2 = pycountry.countries.get(alpha_3=alpha3).alpha_2
         if alpha2 == "IQ":
             return "IZ"
+        elif alpha3 == "IRQ":
+            return "IZ"
         else:
             return alpha2
     except:
