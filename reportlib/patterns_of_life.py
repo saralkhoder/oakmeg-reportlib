@@ -23,7 +23,7 @@ def alpha3to2(alpha3: str) -> str:
         if alpha2 == "IQ":
             return "IZ"
         elif alpha3 == "IRQ":
-            return "IZ"
+            return "IQ"
         else:
             return alpha2
     except:
